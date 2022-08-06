@@ -5,13 +5,13 @@ import com.archyx.aureliumskills.leveler.Leveler;
 import com.archyx.aureliumskills.skills.Skill;
 import org.bukkit.entity.Player;
 
-public class Aurelium implements SkillXP{
+public class Aurelium implements SkillXP {
 
     private static final Leveler leveler = AureliumAPI.getPlugin().getLeveler();
     private static final Skill skill = AureliumAPI.getPlugin().getSkillRegistry().getSkill("fishing");
 
     @Override
-    public void addXp(Player player, double amount) {
+    public void addXP(Player player, double amount) {
         leveler.addXp(player, skill, amount);
     }
 }
