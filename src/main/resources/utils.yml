@@ -1,0 +1,8 @@
+utils:
+  fishfinder:
+    material: compass
+    display:
+      name: 'Поисковик рыбы'
+      lore:
+        - 'ПКМ, чтобы увидеть, какую рыбу можно поймать в этом месте!'
+    custom-model-data: 1

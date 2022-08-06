@@ -1,0 +1,18 @@
+#https://docs.adventure.kyori.net/minimessage/format.html
+messages:
+  prefix: '<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient>'
+  reload: 'Плагин был перезагружен.'
+  no-perm: 'У вас нет прав!'
+  not-online: 'Игрока нету на сервере!'
+  not-exist: 'Предмет не был найден!'
+  escape: 'Рыба ушла!'
+  give-item: 'Успешно выдано игроку {Player} {Amount}x {Item}.'
+  get-item: 'Успешно получено {Amount}x {Item}.'
+  no-console: 'Эта команда не может исполняться в консоли!'
+  wrong-amount: 'Не возможно выдать игроку отрицательное кол-во предметов!'
+  lack-args: 'Недостаточно параметров.'
+  cooldown: 'Не так быстро!'
+  possible-loots: 'Здесь можно поймать: '
+  split-char: ','
+  no-loot: 'В этих местах нету рыбы!'
+  not-open-water: 'Кажется, вам нужно идти в открытие водоёмы!'

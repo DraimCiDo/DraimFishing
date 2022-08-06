@@ -1,0 +1,14 @@
+name: DraimFishing
+version: '${version}'
+main: net.draimcido.draimfishing.Main
+api-version: 1.19
+authors: [ DraimGooSe ]
+softdepend:
+  - MysticMobs
+  - PlaceholderAPI
+  - WorldGuard
+commands:
+  draimfishing:
+    usage: /draimfishing
+    description: Main command.
+    permission: draimfishing.admin
