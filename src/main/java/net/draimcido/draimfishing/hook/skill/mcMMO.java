@@ -6,7 +6,7 @@ import org.bukkit.entity.Player;
 public class mcMMO implements SkillXP {
 
     @Override
-    public void addXP(Player player, double amount) {
+    public void addXp(Player player, double amount) {
         ExperienceAPI.addXP(player, "Fishing", (int) amount, "UNKNOWN");
     }
 }

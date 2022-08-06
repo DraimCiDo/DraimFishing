@@ -297,7 +297,7 @@ public class PlayerListener implements Listener {
                         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1,1);
                     }
                     if (lootInstance.getSkillXP() != 0) {
-                        ConfigReader.Config.skillXP.addXP(player, lootInstance.getSkillXP());
+                        ConfigReader.Config.skillXP.addXp(player, lootInstance.getSkillXP());
                     }
                     if (CompetitionSchedule.competition != null && CompetitionSchedule.competition.isGoingOn()){
                         CompetitionSchedule.competition.refreshRanking(player.getName(), lootInstance);
