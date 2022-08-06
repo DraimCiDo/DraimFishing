@@ -1,6 +1,4 @@
-package net.draimcido.draimfishing.bar;
-
-import net.draimcido.draimfishing.timer.Timer;
+package net.draimcido.draimfishing.titlebar;
 
 public record FishingPlayer(Long fishingTime, Timer timer) {
 
@@ -11,4 +9,5 @@ public record FishingPlayer(Long fishingTime, Timer timer) {
     public Timer getTimer() {
         return this.timer;
     }
+
 }

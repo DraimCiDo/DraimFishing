@@ -1,4 +1,4 @@
-package net.draimcido.draimfishing.utils;
+package net.draimcido.draimfishing.hook;
 
 import io.lumine.mythic.api.adapters.AbstractLocation;
 import io.lumine.mythic.api.adapters.AbstractVector;
@@ -8,12 +8,13 @@ import io.lumine.mythic.bukkit.MythicBukkit;
 import io.lumine.mythic.bukkit.utils.serialize.Position;
 import io.lumine.mythic.core.mobs.ActiveMob;
 import net.draimcido.draimfishing.item.Loot;
+import net.draimcido.draimfishing.utils.VectorUtil;
 import org.bukkit.Location;
 import org.bukkit.util.Vector;
 
 import java.util.Optional;
 
-public class MMUtil {
+public class MythicMobsUtils {
 
     public static void summonMM(Location pLocation, Location bLocation, Loot loot){
         MobManager mobManager = MythicBukkit.inst().getMobManager();

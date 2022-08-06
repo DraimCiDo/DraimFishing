@@ -1,12 +1,9 @@
 package net.draimcido.draimfishing.item;
 
-import net.draimcido.draimfishing.ConfigReader;
-import net.draimcido.draimfishing.bar.Difficulty;
+import net.draimcido.draimfishing.titlebar.Difficulty;
 import net.draimcido.draimfishing.requirements.Requirement;
 import net.draimcido.draimfishing.utils.VectorUtil;
-import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemFlag;
-import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
 
@@ -35,6 +32,8 @@ public class Loot implements Item {
     private boolean showInFinder;
     private int custommodeldata;
     private boolean unbreakable;
+    private double skillXP;
+    private float point;
 
     public Loot(String key, Difficulty difficulty, int weight, int time){
         this.key = key;
@@ -58,6 +57,12 @@ public class Loot implements Item {
     public VectorUtil getVectorUtil(){ return this.vectorUtil; }
     public String getGroup() {return group;}
     public int getExp() {return exp;}
+    public double getSkillXP() {
+        return skillXP;
+    }
+    public float getPoint() {
+        return point;
+    }
 
     @Override
     public List<String> getLore(){return this.lore;}
@@ -95,11 +100,6 @@ public class Loot implements Item {
     public void setEnchantment(List<net.draimcido.draimfishing.utils.Enchantment> enchantment) {this.enchantment = enchantment;}
     public void setCustommodeldata(int custommodeldata){this.custommodeldata = custommodeldata;}
     public void setUnbreakable(boolean unbreakable){this.unbreakable = unbreakable;}
-
-    public static void givePlayerLoot(Player player, String lootKey, int amount){
-        ItemStack itemStack = ConfigReader.LOOTITEM.get(lootKey);
-        if (itemStack == null) return;
-        itemStack.setAmount(amount);
-        player.getInventory().addItem(itemStack);
-    }
+    public void setSkillXP(double skillXP) {this.skillXP = skillXP;}
+    public void setPoint(float point) {this.point = point;}
 }

@@ -9,6 +9,7 @@ items:
     time: 100000
     show-in-fishfinder: false
     difficulty: 1-1
+    score: 10.5
 
   # Внутренний ид предмета
   rainbow_fish:

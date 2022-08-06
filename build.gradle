@@ -4,10 +4,11 @@ plugins {
 }
 
 group = 'net.draimcido'
-version = '1.0.0'
+version = '1.0.1'
 
 repositories {
     mavenCentral()
+    maven { url 'https://jitpack.io' }
     maven {
         name = 'papermc-repo'
         url = 'https://papermc.io/repo/repository/maven-public/'
@@ -40,14 +41,25 @@ repositories {
         name = "Lumine Releases"
         url = "https://mvn.lumine.io/repository/maven-public"
     }
+    maven {
+        name = "mcmmo-repo"
+        url = "https://nexus.neetgames.com/repository/maven-public"
+    }
+    maven {
+        name = "phoenix"
+        url = "https://nexus.phoenixdvpt.fr/repository/maven-public/"
+    }
 }
 
 dependencies {
+    compileOnly 'com.github.Archy-X:AureliumSkills:Beta1.3.7'
     compileOnly 'com.destroystokyo.paper:paper-api:1.16.5-R0.1-SNAPSHOT'
     compileOnly group: "com.comphenix.protocol", name: "ProtocolLib", version: "4.8.0"
     compileOnly 'me.clip:placeholderapi:2.11.1'
     compileOnly 'com.sk89q.worldguard:worldguard-bukkit:7.0.7'
     compileOnly 'io.lumine:Mythic-Dist:5.0.3-SNAPSHOT'
+    implementation 'com.gmail.nossr50.mcMMO:mcMMO:2.1.200'
+    implementation 'net.Indyuce:MMOCore:1.9.4'
     implementation("net.kyori:adventure-api:4.11.0")
     implementation("net.kyori:adventure-platform-bukkit:4.1.2")
     implementation("net.kyori:adventure-text-minimessage:4.11.0")

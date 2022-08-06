@@ -1,7 +1,6 @@
-package net.draimcido.draimfishing.timer;
+package net.draimcido.draimfishing.titlebar;
 
 import net.draimcido.draimfishing.Main;
-import net.draimcido.draimfishing.bar.Difficulty;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -14,7 +13,7 @@ public class Timer {
     public Timer(Player player, Difficulty difficulty, String layout) {
         this.layout = layout;
         this.timerTask = new TimerTask(player, difficulty, layout);
-        this.task = timerTask.runTaskTimerAsynchronously(Main.instance, 1,1);
+        this.task = timerTask.runTaskTimerAsynchronously(Main.instance, 0,1);
         timerTask.setTaskID(task.getTaskId());
     }
 

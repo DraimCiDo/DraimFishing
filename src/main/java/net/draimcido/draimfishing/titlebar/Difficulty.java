@@ -1,4 +1,4 @@
-package net.draimcido.draimfishing.bar;
+package net.draimcido.draimfishing.titlebar;
 
 public record Difficulty(int timer, int speed) {
 
@@ -9,4 +9,5 @@ public record Difficulty(int timer, int speed) {
     public int getSpeed() {
         return this.speed;
     }
+
 }

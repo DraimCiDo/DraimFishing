@@ -1,4 +1,4 @@
-package net.draimcido.draimfishing.bar;
+package net.draimcido.draimfishing.titlebar;
 
 public class Layout {
 
@@ -41,4 +41,3 @@ public class Layout {
     public String getStart() {return start;}
     public String getTitle() {return title;}
 }
-

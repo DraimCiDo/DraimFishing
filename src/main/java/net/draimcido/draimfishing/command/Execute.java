@@ -1,11 +1,9 @@
 package net.draimcido.draimfishing.command;
 
-import net.draimcido.draimfishing.AdventureManager;
 import net.draimcido.draimfishing.ConfigReader;
-import net.draimcido.draimfishing.item.Bait;
-import net.draimcido.draimfishing.item.Loot;
-import net.draimcido.draimfishing.item.Rod;
-import net.draimcido.draimfishing.item.Util;
+import net.draimcido.draimfishing.competition.CompetitionSchedule;
+import net.draimcido.draimfishing.item.ItemGive;
+import net.draimcido.draimfishing.utils.AdventureManager;
 import net.draimcido.draimfishing.utils.SaveItem;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
@@ -51,6 +49,31 @@ public class Execute implements CommandExecutor {
             return true;
         }
 
+        if (args[0].equalsIgnoreCase("competition")) {
+            if (args.length < 2) {
+                lackArgs(sender);
+                return true;
+            }
+            if (args[1].equalsIgnoreCase("start")) {
+                if (args.length < 3) {
+                    lackArgs(sender);
+                    return true;
+                }
+                if (CompetitionSchedule.startCompetition(args[2])) {
+                    forceSuccess(sender);
+                } else {
+                    forceFailure(sender);
+                }
+            } else if (args[1].equalsIgnoreCase("end")) {
+                CompetitionSchedule.endCompetition();
+                forceEnd(sender);
+            } else if (args[1].equalsIgnoreCase("cancel")) {
+                CompetitionSchedule.cancelCompetition();
+                forceCancel(sender);
+            }
+            return true;
+        }
+
         if (args[0].equalsIgnoreCase("items")) {
             if (args.length < 4){
                 lackArgs(sender);
@@ -66,14 +89,14 @@ public class Execute implements CommandExecutor {
                             return true;
                         }
                         if (args.length == 4){
-                            Loot.givePlayerLoot(player, args[3], 1);
+                            ItemGive.givePlayerLoot(player, args[3], 1);
                             AdventureManager.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", "1").replace("{Item}",args[3]));
                         }else {
                             if (Integer.parseInt(args[4]) < 1){
                                 wrongAmount(sender);
                                 return true;
                             }
-                            Loot.givePlayerLoot(player, args[3], Integer.parseInt(args[4]));
+                            ItemGive.givePlayerLoot(player, args[3], Integer.parseInt(args[4]));
                             AdventureManager.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", args[4]).replace("{Item}",args[3]));
                         }
                     }else {
@@ -99,14 +122,14 @@ public class Execute implements CommandExecutor {
                         return true;
                     }
                     if (args.length == 5){
-                        Loot.givePlayerLoot(player, args[4], 1);
+                        ItemGive.givePlayerLoot(player, args[4], 1);
                         giveItem(sender, args[3], args[4], 1);
                     }else {
                         if (Integer.parseInt(args[5]) < 1){
                             wrongAmount(sender);
                             return true;
                         }
-                        Loot.givePlayerLoot(player, args[4], Integer.parseInt(args[5]));
+                        ItemGive.givePlayerLoot(player, args[4], Integer.parseInt(args[5]));
                         giveItem(sender, args[3], args[4], Integer.parseInt(args[5]));
                     }
                     return true;
@@ -125,14 +148,14 @@ public class Execute implements CommandExecutor {
                             return true;
                         }
                         if (args.length == 4){
-                            Util.givePlayerUtil(player, args[3], 1);
+                            ItemGive.givePlayerUtil(player, args[3], 1);
                             AdventureManager.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", "1").replace("{Item}",args[3]));
                         }else {
                             if (Integer.parseInt(args[4]) < 1){
                                 wrongAmount(sender);
                                 return true;
                             }
-                            Util.givePlayerUtil(player, args[3], Integer.parseInt(args[4]));
+                            ItemGive.givePlayerUtil(player, args[3], Integer.parseInt(args[4]));
                             AdventureManager.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", args[4]).replace("{Item}",args[3]));
                         }
                     }else {
@@ -158,14 +181,14 @@ public class Execute implements CommandExecutor {
                         return true;
                     }
                     if (args.length == 5){
-                        Util.givePlayerUtil(player, args[4], 1);
+                        ItemGive.givePlayerUtil(player, args[4], 1);
                         giveItem(sender, args[3], args[4], 1);
                     }else {
                         if (Integer.parseInt(args[5]) < 1){
                             wrongAmount(sender);
                             return true;
                         }
-                        Util.givePlayerUtil(player, args[4], Integer.parseInt(args[5]));
+                        ItemGive.givePlayerUtil(player, args[4], Integer.parseInt(args[5]));
                         giveItem(sender, args[3], args[4], Integer.parseInt(args[5]));
                     }
                     return true;
@@ -181,14 +204,14 @@ public class Execute implements CommandExecutor {
                             return true;
                         }
                         if (args.length == 4){
-                            Rod.givePlayerRod(player, args[3], 1);
+                            ItemGive.givePlayerRod(player, args[3], 1);
                             AdventureManager.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", "1").replace("{Item}",args[3]));
                         }else {
                             if (Integer.parseInt(args[4]) < 1){
                                 wrongAmount(sender);
                                 return true;
                             }
-                            Rod.givePlayerRod(player, args[3], Integer.parseInt(args[4]));
+                            ItemGive.givePlayerRod(player, args[3], Integer.parseInt(args[4]));
                             AdventureManager.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", args[4]).replace("{Item}",args[3]));
                         }
                     }else {
@@ -214,14 +237,14 @@ public class Execute implements CommandExecutor {
                         return true;
                     }
                     if (args.length == 5){
-                        Rod.givePlayerRod(player, args[4], 1);
+                        ItemGive.givePlayerRod(player, args[4], 1);
                         giveItem(sender, args[3], args[4], 1);
                     }else {
                         if (Integer.parseInt(args[5]) < 1){
                             wrongAmount(sender);
                             return true;
                         }
-                        Rod.givePlayerRod(player, args[4], Integer.parseInt(args[5]));
+                        ItemGive.givePlayerRod(player, args[4], Integer.parseInt(args[5]));
                         giveItem(sender, args[3], args[4], Integer.parseInt(args[5]));
                     }
                     return true;
@@ -237,14 +260,14 @@ public class Execute implements CommandExecutor {
                             return true;
                         }
                         if (args.length == 4){
-                            Bait.givePlayerBait(player, args[3], 1);
+                            ItemGive.givePlayerBait(player, args[3], 1);
                             AdventureManager.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", "1").replace("{Item}",args[3]));
                         }else {
                             if (Integer.parseInt(args[4]) < 1){
                                 wrongAmount(sender);
                                 return true;
                             }
-                            Bait.givePlayerBait(player, args[3], Integer.parseInt(args[4]));
+                            ItemGive.givePlayerBait(player, args[3], Integer.parseInt(args[4]));
                             AdventureManager.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", args[4]).replace("{Item}",args[3]));
                         }
                     }else {
@@ -270,14 +293,14 @@ public class Execute implements CommandExecutor {
                         return true;
                     }
                     if (args.length == 5){
-                        Bait.givePlayerBait(player, args[4], 1);
+                        ItemGive.givePlayerBait(player, args[4], 1);
                         giveItem(sender, args[3], args[4], 1);
                     }else {
                         if (Integer.parseInt(args[5]) < 1){
                             wrongAmount(sender);
                             return true;
                         }
-                        Bait.givePlayerBait(player, args[4], Integer.parseInt(args[5]));
+                        ItemGive.givePlayerBait(player, args[4], Integer.parseInt(args[5]));
                         giveItem(sender, args[3], args[4], Integer.parseInt(args[5]));
                     }
                     return true;
@@ -326,6 +349,38 @@ public class Execute implements CommandExecutor {
             AdventureManager.playerMessage((Player) sender, ConfigReader.Message.prefix + ConfigReader.Message.wrongAmount);
         }else {
             AdventureManager.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.wrongAmount);
+        }
+    }
+
+    private void forceSuccess(CommandSender sender){
+        if (sender instanceof Player){
+            AdventureManager.playerMessage((Player) sender, ConfigReader.Message.prefix + ConfigReader.Message.forceSuccess);
+        }else {
+            AdventureManager.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.forceSuccess);
+        }
+    }
+
+    private void forceFailure(CommandSender sender){
+        if (sender instanceof Player){
+            AdventureManager.playerMessage((Player) sender, ConfigReader.Message.prefix + ConfigReader.Message.forceFailure);
+        }else {
+            AdventureManager.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.forceFailure);
+        }
+    }
+
+    private void forceEnd(CommandSender sender){
+        if (sender instanceof Player){
+            AdventureManager.playerMessage((Player) sender, ConfigReader.Message.prefix + ConfigReader.Message.forceEnd);
+        }else {
+            AdventureManager.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.forceEnd);
+        }
+    }
+
+    private void forceCancel(CommandSender sender){
+        if (sender instanceof Player){
+            AdventureManager.playerMessage((Player) sender, ConfigReader.Message.prefix + ConfigReader.Message.forceCancel);
+        }else {
+            AdventureManager.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.forceCancel);
         }
     }
 }

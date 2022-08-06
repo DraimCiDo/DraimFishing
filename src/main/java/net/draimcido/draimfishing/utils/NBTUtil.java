@@ -2,10 +2,8 @@ package net.draimcido.draimfishing.utils;
 
 import de.tr7zw.changeme.nbtapi.NBTCompound;
 import de.tr7zw.changeme.nbtapi.NBTItem;
-import org.apache.commons.lang.StringUtils;
 import org.bukkit.inventory.ItemStack;
 
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 public class NBTUtil {
@@ -31,7 +29,7 @@ public class NBTUtil {
         return this.nbtItem;
     }
 
-    private NBTCompound setTags(Map<String,Object> map, NBTCompound nbtCompound){
+    private void setTags(Map<String,Object> map, NBTCompound nbtCompound){
         map.keySet().forEach(key -> {
             if (map.get(key) instanceof Map map2){
                 nbtCompound.addCompound(key);
@@ -54,7 +52,7 @@ public class NBTUtil {
                             nbtCompound.getIntegerList(key).add(Integer.valueOf(s.substring(6)));
                         } else if (s.startsWith("(IntArray) ")){
                             String[] split = s.substring(11).replace("[","").replace("]","").replaceAll("\\s", "").split(",");
-                            int[] array = Arrays.asList(split).stream().mapToInt(Integer::parseInt).toArray();
+                            int[] array = Arrays.stream(split).mapToInt(Integer::parseInt).toArray();
                             nbtCompound.getIntArrayList(key).add(array);
                         }
                     } else if (o instanceof Map map1) {
@@ -91,12 +89,11 @@ public class NBTUtil {
                         nbtCompound.setByteArray(key, bytes);
                     }else if (string.startsWith("(IntArray) ")){
                         String[] split = string.substring(11).replace("[","").replace("]","").replaceAll("\\s", "").split(",");
-                        int[] array = Arrays.asList(split).stream().mapToInt(Integer::parseInt).toArray();
+                        int[] array = Arrays.stream(split).mapToInt(Integer::parseInt).toArray();
                         nbtCompound.setIntArray(key, array);
                     }
                 }
             }
         });
-        return nbtCompound;
     }
 }

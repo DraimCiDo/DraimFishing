@@ -1,10 +1,7 @@
 package net.draimcido.draimfishing.item;
 
-import net.draimcido.draimfishing.ConfigReader;
 import net.draimcido.draimfishing.utils.Enchantment;
-import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemFlag;
-import org.bukkit.inventory.ItemStack;
 
 import java.util.List;
 import java.util.Map;
@@ -24,12 +21,6 @@ public class Util implements Item{
         this.material = material;
     }
 
-    public static void givePlayerUtil(Player player, String utilKey, int amount){
-        ItemStack itemStack = ConfigReader.UTILITEM.get(utilKey);
-        if (itemStack == null) return;
-        itemStack.setAmount(amount);
-        player.getInventory().addItem(itemStack);
-    }
 
     public void setLore(List<String> lore){this.lore = lore;}
     public void setNbt(Map<String,Object> nbt){this.nbt = nbt;}

@@ -1,10 +1,7 @@
 package net.draimcido.draimfishing.item;
 
-import net.draimcido.draimfishing.ConfigReader;
 import net.draimcido.draimfishing.utils.Enchantment;
-import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemFlag;
-import org.bukkit.inventory.ItemStack;
 
 import java.util.HashMap;
 import java.util.List;
@@ -25,11 +22,6 @@ public class Rod implements Item{
     private int custommodeldata;
     private boolean unbreakable;
 
-    public static void givePlayerRod(Player player, String rodKey, int amount){
-        ItemStack itemStack = ConfigReader.RODITEM.get(rodKey);
-        itemStack.setAmount(amount);
-        player.getInventory().addItem(itemStack);
-    }
 
     public void setDifficulty(int difficulty) {this.difficulty = difficulty;}
     public void setDoubleLoot(double doubleLoot) {this.doubleLoot = doubleLoot;}

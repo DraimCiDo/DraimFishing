@@ -1,6 +1,6 @@
 package net.draimcido.draimfishing.requirements;
 
-import net.draimcido.draimfishing.AdventureManager;
+import net.draimcido.draimfishing.utils.AdventureManager;
 import org.bukkit.World;
 
 import java.util.List;

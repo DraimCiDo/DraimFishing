@@ -1,6 +1,9 @@
-package net.draimcido.draimfishing;
+package net.draimcido.draimfishing.utils;
 
+import net.draimcido.draimfishing.Main;
 import net.kyori.adventure.audience.Audience;
+import net.kyori.adventure.key.Key;
+import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.title.Title;
@@ -31,5 +34,17 @@ public class AdventureManager {
         Title.Times times = Title.Times.times(Duration.ofMillis(in), Duration.ofMillis(duration), Duration.ofMillis(out));
         Title title = Title.title(mm.deserialize(s1), mm.deserialize(s2), times);
         au.showTitle(title);
+    }
+
+    public static void playerActionBar(Player p, String s) {
+        Audience au = Main.adventure.player(p);
+        MiniMessage mm = MiniMessage.miniMessage();
+        au.sendActionBar(mm.deserialize(s));
+    }
+
+    public static void playerSound(Player p, Sound.Source source, Key key) {
+        Sound sound = Sound.sound(key, source, 1, 1);
+        Audience au = Main.adventure.player(p);
+        au.playSound(sound);
     }
 }

@@ -2,19 +2,21 @@ package net.draimcido.draimfishing.listener;
 
 import de.tr7zw.changeme.nbtapi.NBTCompound;
 import de.tr7zw.changeme.nbtapi.NBTItem;
-import net.draimcido.draimfishing.AdventureManager;
+import net.draimcido.draimfishing.competition.CompetitionSchedule;
+import net.draimcido.draimfishing.competition.bossbar.BossBarManager;
+import net.draimcido.draimfishing.hook.MythicMobsUtils;
+import net.draimcido.draimfishing.titlebar.Difficulty;
+import net.draimcido.draimfishing.titlebar.FishingPlayer;
+import net.draimcido.draimfishing.titlebar.Layout;
+import net.draimcido.draimfishing.titlebar.Timer;
+import net.draimcido.draimfishing.utils.AdventureManager;
 import net.draimcido.draimfishing.ConfigReader;
 import net.draimcido.draimfishing.Main;
-import net.draimcido.draimfishing.bar.Difficulty;
-import net.draimcido.draimfishing.bar.FishingPlayer;
-import net.draimcido.draimfishing.bar.Layout;
 import net.draimcido.draimfishing.item.Bait;
 import net.draimcido.draimfishing.item.Loot;
 import net.draimcido.draimfishing.item.Rod;
 import net.draimcido.draimfishing.requirements.FishingCondition;
 import net.draimcido.draimfishing.requirements.Requirement;
-import net.draimcido.draimfishing.timer.Timer;
-import net.draimcido.draimfishing.utils.MMUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -51,12 +53,10 @@ public class PlayerListener implements Listener {
         PlayerFishEvent.State state = event.getState();
         Player player = event.getPlayer();
 
-        //抛竿
         if (state.equals(PlayerFishEvent.State.FISHING)){
 
-            //设置冷却时间
             long time = System.currentTimeMillis();
-            if (time - (coolDown.getOrDefault(player, time - 1000)) < 1000) {
+            if (time - (coolDown.getOrDefault(player, time - 2000)) < 2000) {
                 return;
             }
             coolDown.put(player, time);
@@ -256,22 +256,25 @@ public class PlayerListener implements Listener {
                 int last = (fishingPlayers.get(player).getTimer().getTimerTask().getProgress() + 1)/layout.getRange();
                 fishingPlayers.remove(player);
                 player.removePotionEffect(PotionEffectType.SLOW);
-                if (!event.getHook().isInOpenWater()){
+                if (ConfigReader.Config.needOpenWater && !event.getHook().isInOpenWater()){
                     AdventureManager.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.notOpenWater);
                     return;
                 }
                 if (Math.random() < layout.getSuccessRate()[last]){
                     Location location = event.getHook().getLocation();
                     if (lootInstance.getMm() != null){
-                        MMUtil.summonMM(player.getLocation(), location, lootInstance);
+                        MythicMobsUtils.summonMM(player.getLocation(), location, lootInstance);
                     }else {
-                        Entity item = location.getWorld().dropItem(location, ConfigReader.LOOTITEM.get(lootInstance.getKey()));
-                        Vector vector = player.getLocation().subtract(location).toVector().multiply(0.1);
-                        vector = vector.setY((vector.getY()+0.2)*1.2);
-                        item.setVelocity(vector);
-                        if (willDouble.contains(player)){
-                            Entity item2 = location.getWorld().dropItem(location, ConfigReader.LOOTITEM.get(lootInstance.getKey()));
-                            item2.setVelocity(vector);
+                        ItemStack itemStack = ConfigReader.LOOTITEM.get(lootInstance.getKey());
+                        if (itemStack.getType() != Material.AIR) {
+                            Entity item = location.getWorld().dropItem(location, itemStack);
+                            Vector vector = player.getLocation().subtract(location).toVector().multiply(0.1);
+                            vector = vector.setY((vector.getY()+0.2)*1.2);
+                            item.setVelocity(vector);
+                            if (willDouble.contains(player)) {
+                                Entity item2 = location.getWorld().dropItem(location, itemStack);
+                                item2.setVelocity(vector);
+                            }
                         }
                     }
                     if (lootInstance.getMsg() != null){
@@ -292,6 +295,13 @@ public class PlayerListener implements Listener {
                     if (lootInstance.getExp() != 0){
                         player.giveExp(lootInstance.getExp(),true);
                         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1,1);
+                    }
+                    if (lootInstance.getSkillXP() != 0) {
+                        ConfigReader.Config.skillXP.addXP(player, lootInstance.getSkillXP());
+                    }
+                    if (CompetitionSchedule.competition != null && CompetitionSchedule.competition.isGoingOn()){
+                        CompetitionSchedule.competition.refreshRanking(player.getName(), lootInstance);
+                        BossBarManager.joinCompetition(player);
                     }
                     AdventureManager.playerTitle(player, ConfigReader.Title.success_title.get((int) (ConfigReader.Title.success_title.size()*Math.random())).replace("{loot}",lootInstance.getNick()), ConfigReader.Title.success_subtitle.get((int) (ConfigReader.Title.success_subtitle.size()*Math.random())).replace("{loot}",lootInstance.getNick()), ConfigReader.Title.success_in, ConfigReader.Title.success_stay, ConfigReader.Title.success_out);
                 }else {

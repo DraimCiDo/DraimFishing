@@ -1,10 +1,8 @@
-package net.draimcido.draimfishing.timer;
+package net.draimcido.draimfishing.titlebar;
 
-import net.draimcido.draimfishing.AdventureManager;
 import net.draimcido.draimfishing.ConfigReader;
 import net.draimcido.draimfishing.Main;
-import net.draimcido.draimfishing.bar.Difficulty;
-import net.draimcido.draimfishing.bar.Layout;
+import net.draimcido.draimfishing.utils.AdventureManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -63,6 +61,7 @@ public class TimerTask extends BukkitRunnable {
             bukkitScheduler.cancelTask(taskID);
             return;
         }
+
         if (System.currentTimeMillis() > fishingPlayers.get(player).getFishingTime()){
             fishingPlayers.remove(player);
             bukkitScheduler.cancelTask(taskID);

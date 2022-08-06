@@ -1,9 +1,6 @@
 package net.draimcido.draimfishing.item;
 
-import net.draimcido.draimfishing.ConfigReader;
-import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemFlag;
-import org.bukkit.inventory.ItemStack;
 
 import java.util.HashMap;
 import java.util.List;
@@ -29,12 +26,6 @@ public class Bait implements Item{
         this.material = material;
     }
 
-    public static void givePlayerBait(Player player, String baitKey, int amount){
-        ItemStack itemStack = ConfigReader.BAITITEM.get(baitKey);
-        if (itemStack == null) return;
-        itemStack.setAmount(amount);
-        player.getInventory().addItem(itemStack);
-    }
 
     public void setName(String name) {this.name = name;}
     public void setItemFlags(List<ItemFlag> itemFlags) {this.itemFlags = itemFlags;}
