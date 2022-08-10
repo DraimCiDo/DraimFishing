@@ -5,11 +5,11 @@ import org.bukkit.entity.Player;
 
 import java.util.List;
 
-public class Command implements Reward{
+public class CommandImpl implements Reward{
 
     private final List<String> commands;
 
-    public Command(List<String> commands){
+    public CommandImpl(List<String> commands){
         this.commands = commands;
     }
 

@@ -45,6 +45,9 @@ public class Execute implements CommandExecutor {
             }
             if (sender instanceof Player player){
                 SaveItem.saveToFile(player.getInventory().getItemInMainHand(), args[1]);
+                AdventureManager.playerMessage(player, ConfigReader.Message.prefix + "Готово!");
+            } else {
+                AdventureManager.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.noConsole);
             }
             return true;
         }

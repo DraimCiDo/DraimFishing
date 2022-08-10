@@ -33,7 +33,7 @@ public class Loot implements Item {
     private int custommodeldata;
     private boolean unbreakable;
     private double skillXP;
-    private float point;
+    private float score;
 
     public Loot(String key, Difficulty difficulty, int weight, int time){
         this.key = key;
@@ -60,9 +60,7 @@ public class Loot implements Item {
     public double getSkillXP() {
         return skillXP;
     }
-    public float getPoint() {
-        return point;
-    }
+    public float getScore() {return score;}
 
     @Override
     public List<String> getLore(){return this.lore;}
@@ -101,5 +99,5 @@ public class Loot implements Item {
     public void setCustommodeldata(int custommodeldata){this.custommodeldata = custommodeldata;}
     public void setUnbreakable(boolean unbreakable){this.unbreakable = unbreakable;}
     public void setSkillXP(double skillXP) {this.skillXP = skillXP;}
-    public void setPoint(float point) {this.point = point;}
+    public void setScore(float score) {this.score = score;}
 }

@@ -6,21 +6,45 @@ baits:
       lore:
         - '<white>Сокращает время ловли рыбы,'
         - '<white>но повышает сложность ловли'
-    custom-model-data: 1
+    custom-model-data: 646
     # Усиление приманки
     modifier:
       # Изменение рыбы для указанного предмета
       # Сложение и вычитание
       weight-PM:
-        normal: 20
-        creature: -10
+        silver: 5
+        gold: 3
       # Умножение и деление
       weight-MQ:
-        normal: 1.8
-        creature: 0.8
+        silver: 1.1
+        gold: 1.1
       # Изменение времени добычи рыбы (>1 - увеличить, <1 - уменьшить)
-      time: 0.95
+      time: 0.85
       # Изменение сложности, например, первоначальная сложность равна (1-6), теперь она становится (1-5)
       difficulty: 3
       # Вероятность двойной добычи
-      double-loot: 0.05
+      double-loot: 0.06
+      # Бонус за счет соревнований
+      score: 1.2
+
+  wild_bait:
+    material: paper
+    display:
+      name: 'Дикая приманка'
+      lore:
+        - '<white>Сокращает время ловли на 30%.'
+    custom-model-data: 696
+    modifier:
+      time: 0.7
+
+  magnet_bait:
+    material: paper
+    display:
+      name: '<gray>Магнитная приманка'
+      lore:
+        - '<white>Увеличивает вероятность лучшей добычи на 15%.'
+    custom-model-data: 695
+    modifier:
+      weight-MQ:
+        silver: 1.15
+        gold: 1.15

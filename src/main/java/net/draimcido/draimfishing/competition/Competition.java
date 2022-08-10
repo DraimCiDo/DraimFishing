@@ -4,8 +4,12 @@ import net.draimcido.draimfishing.ConfigReader;
 import net.draimcido.draimfishing.Main;
 import net.draimcido.draimfishing.competition.bossbar.BossBarConfig;
 import net.draimcido.draimfishing.competition.bossbar.BossBarManager;
-import net.draimcido.draimfishing.item.Loot;
+import net.draimcido.draimfishing.competition.ranking.Ranking;
+import net.draimcido.draimfishing.competition.ranking.RankingImpl;
+import net.draimcido.draimfishing.competition.ranking.RedisRankingImpl;
+import net.draimcido.draimfishing.competition.reward.Reward;
 import net.draimcido.draimfishing.utils.AdventureManager;
+import net.draimcido.draimfishing.utils.JedisUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -26,6 +30,7 @@ public class Competition {
     private final BossBarConfig bossBarConfig;
     private final List<String> startMessage;
     private final List<String> endMessage;
+    private final HashMap<String, List<Reward>> rewardsMap;
 
     public static long remainingTime;
     public static float progress;
@@ -38,21 +43,24 @@ public class Competition {
         this.bossBarConfig = competitionConfig.getBossBarConfig();
         this.startMessage = competitionConfig.getStartMessage();
         this.endMessage = competitionConfig.getEndMessage();
+        this.rewardsMap = competitionConfig.getRewards();
     }
 
     public void begin(boolean forceStart) {
-
         if (goal == Goal.RANDOM) {
             goal = getRandomGoal();
         }
-
         remainingTime = this.duration;
         this.startTime = Instant.now().getEpochSecond();
 
         Collection<? extends Player> playerCollections = Bukkit.getOnlinePlayers();
         if (playerCollections.size() >= minPlayers || forceStart) {
             status = true;
-            ranking = new Ranking();
+            if (JedisUtil.useRedis){
+                ranking = new RedisRankingImpl();
+            }else {
+                ranking = new RankingImpl();
+            }
             startTimer();
             if (startMessage != null){
                 playerCollections.forEach(player -> {
@@ -101,16 +109,18 @@ public class Competition {
         BossBarManager.stopAllTimer();
         this.timerTask.cancel();
         status = false;
+        givePrize();
         if (endMessage != null){
             List<String> newMessage = new ArrayList<>();
             endMessage.forEach(message -> {
-                float first = ranking.getScoreAt(1);
-                float second = ranking.getScoreAt(2);
-                float third = ranking.getScoreAt(3);
+                CompetitionPlayer[] competitionPlayers = ranking.getTop3Player();
+                float first = Optional.ofNullable(competitionPlayers[0]).orElse(CompetitionPlayer.emptyPlayer).getScore();
+                float second = Optional.ofNullable(competitionPlayers[1]).orElse(CompetitionPlayer.emptyPlayer).getScore();
+                float third = Optional.ofNullable(competitionPlayers[2]).orElse(CompetitionPlayer.emptyPlayer).getScore();
                 newMessage.add(message
-                        .replace("{1st}", Optional.ofNullable(ranking.getPlayerAt(1)).orElse(ConfigReader.Message.noPlayer))
-                        .replace("{2nd}", Optional.ofNullable(ranking.getPlayerAt(2)).orElse(ConfigReader.Message.noPlayer))
-                        .replace("{3rd}", Optional.ofNullable(ranking.getPlayerAt(3)).orElse(ConfigReader.Message.noPlayer))
+                        .replace("{1st}", Optional.ofNullable(Optional.ofNullable(competitionPlayers[0]).orElse(CompetitionPlayer.emptyPlayer).getPlayer()).orElse(ConfigReader.Message.noPlayer))
+                        .replace("{2nd}", Optional.ofNullable(Optional.ofNullable(competitionPlayers[1]).orElse(CompetitionPlayer.emptyPlayer).getPlayer()).orElse(ConfigReader.Message.noPlayer))
+                        .replace("{3rd}", Optional.ofNullable(Optional.ofNullable(competitionPlayers[2]).orElse(CompetitionPlayer.emptyPlayer).getPlayer()).orElse(ConfigReader.Message.noPlayer))
                         .replace("{1st_points}", first < 0 ? ConfigReader.Message.noScore : String.format("%.1f",(first)))
                         .replace("{2nd_points}", second < 0 ? ConfigReader.Message.noScore : String.format("%.1f",(second)))
                         .replace("{3rd_points}", third < 0 ? ConfigReader.Message.noScore : String.format("%.1f",(third))));
@@ -121,28 +131,57 @@ public class Competition {
                 });
             });
         }
-        ranking.clear();
+        Bukkit.getScheduler().runTaskLaterAsynchronously(Main.instance, ()-> {
+            ranking.clear();
+        }, 300);
+    }
+
+    public void givePrize(){
+        if (ranking.getSize() != 0 && rewardsMap != null) {
+            Iterator<String> iterator = ranking.getIterator();
+            int i = 1;
+            while (iterator.hasNext()) {
+                if (i < rewardsMap.size()) {
+                    String playerName = iterator.next();
+                    Player player = Bukkit.getPlayer(playerName);
+                    if (player != null){
+                        for (Reward reward : rewardsMap.get(String.valueOf(i))) {
+                            reward.giveReward(player);
+                        }
+                    }
+                    i++;
+                }
+                else {
+                    List<Reward> rewards = rewardsMap.get("participation");
+                    if (rewards != null) {
+                        iterator.forEachRemaining(playerName -> {
+                            Player player = Bukkit.getPlayer(playerName);
+                            if (player != null){
+                                for (Reward reward : rewards) {
+                                    reward.giveReward(player);
+                                }
+                            }
+                        });
+                    }
+                    else {
+                        break;
+                    }
+                }
+            }
+        }
     }
 
     public void cancel() {
-        ranking.clear();
         BossBarManager.stopAllTimer();
+        ranking.clear();
         this.timerTask.cancel();
         status = false;
     }
 
-    public void refreshRanking(String player, Loot loot) {
-        CompetitionPlayer competitionPlayer = ranking.getCompetitionPlayer(player);
-        float score;
-        if (this.goal == Goal.TOTAL_POINTS) score = loot.getPoint();
-        else score = 1.0f;
-        if (competitionPlayer != null) {
-            ranking.removePlayer(competitionPlayer);
-            competitionPlayer.addScore(score);
-            ranking.addPlayer(competitionPlayer);
-        } else {
-            ranking.addPlayer(player, score);
-        }
+    public void refreshRanking(String player, float score) {
+        if (this.goal != Goal.TOTAL_SCORE) score = 1.0f;
+        if (score == 0) return;
+        ranking.refreshData(player, score);
     }
 
     private Goal getRandomGoal() {

@@ -5,11 +5,11 @@ import org.bukkit.entity.Player;
 
 import java.util.List;
 
-public class Message implements Reward{
+public class MessageImpl implements Reward{
 
     private final List<String> messages;
 
-    public Message(List<String> messages){
+    public MessageImpl(List<String> messages){
         this.messages = messages;
     }
 

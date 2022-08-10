@@ -7,7 +7,6 @@ import net.draimcido.draimfishing.competition.CompetitionSchedule;
 import net.draimcido.draimfishing.hook.PapiHook;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.bossbar.BossBar;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -19,17 +18,19 @@ public class BossBarSender extends BukkitRunnable {
     private final Audience audience;
     private BossBar bossBar;
     private int timer;
-    private final BossBarConfig bossbarConfig;
     private final BossBar.Color color;
     private final BossBar.Overlay overlay;
+    private final String text;
+    private final int rate;
 
     public BossBarSender(Player player, BossBarConfig bossbarConfig) {
         this.player = player;
-        this.bossbarConfig = bossbarConfig;
         this.audience = Main.adventure.player(player);
         this.timer = 0;
         this.color = bossbarConfig.getColor();
         this.overlay = bossbarConfig.getOverlay();
+        this.text = bossbarConfig.getText();
+        this.rate = bossbarConfig.getRate();
     }
 
     public void hideBossbar() {
@@ -37,18 +38,9 @@ public class BossBarSender extends BukkitRunnable {
     }
 
     public void showBossbar() {
-        String text;
-        if (ConfigReader.Config.papi) {
-            text = PapiHook.parse(player, bossbarConfig.getText());
-        } else {
-            text = bossbarConfig.getText();
-        }
+        String newText = updateText();
         bossBar = BossBar.bossBar(
-                MiniMessage.miniMessage().deserialize(text.replace("{time}", String.valueOf(Competition.remainingTime))
-                        .replace("{rank}", Optional.ofNullable(CompetitionSchedule.competition.getRanking().getPlayerRank(player.getName())).orElse(ConfigReader.Message.noRank))
-                        .replace("{minute}", String.format("%02d", Competition.remainingTime / 60))
-                        .replace("{second}", String.format("%02d", Competition.remainingTime % 60))
-                        .replace("{point}", String.format("%.1f", Optional.ofNullable(CompetitionSchedule.competition.getRanking().getCompetitionPlayer(player.getName())).orElse(Competition.emptyPlayer).getScore()))),
+                Main.miniMessage.deserialize(newText),
                 Competition.progress,
                 color,
                 overlay);
@@ -57,23 +49,37 @@ public class BossBarSender extends BukkitRunnable {
 
     @Override
     public void run() {
-        if (timer < bossbarConfig.getRate()) {
+        if (timer < rate){
             timer++;
         } else {
-            String text;
-            if (ConfigReader.Config.papi) {
-                text = PapiHook.parse(player, bossbarConfig.getText());
-            } else {
-                text = bossbarConfig.getText();
-            }
-            bossBar.name(
-                    MiniMessage.miniMessage().deserialize(text.replace("{time}", String.valueOf(Competition.remainingTime))
-                            .replace("{rank}", Optional.ofNullable(CompetitionSchedule.competition.getRanking().getPlayerRank(player.getName())).orElse(ConfigReader.Message.noRank))
-                            .replace("{minute}", String.format("%02d", Competition.remainingTime / 60))
-                            .replace("{second}", String.format("%02d", Competition.remainingTime % 60))
-                            .replace("{point}", String.format("%.1f", Optional.ofNullable(CompetitionSchedule.competition.getRanking().getCompetitionPlayer(player.getName())).orElse(Competition.emptyPlayer).getScore()))));
+            updateText();
+            String newText = updateText();
+            bossBar.name(Main.miniMessage.deserialize(newText));
             bossBar.progress(Competition.progress);
             timer = 0;
         }
+    }
+
+    private String updateText() {
+        String text;
+        if (ConfigReader.Config.papi){
+            text = PapiHook.parse(player, this.text);
+        }else {
+            text = this.text;
+        }
+        String newText;
+        if (ConfigReader.Config.papi){
+            newText = PapiHook.parse(player, text.replace("{time}", String.valueOf(Competition.remainingTime))
+                            .replace("{rank}", Optional.ofNullable(CompetitionSchedule.competition.getRanking().getPlayerRank(player.getName())).orElse(ConfigReader.Message.noRank))
+                            .replace("{minute}", String.format("%02d", Competition.remainingTime / 60))
+                            .replace("{point}", String.format("%.1f",Optional.ofNullable(CompetitionSchedule.competition.getRanking().getCompetitionPlayer(player.getName())).orElse(Competition.emptyPlayer).getScore())));
+        }else {
+            newText = text.replace("{time}", String.valueOf(Competition.remainingTime))
+                    .replace("{rank}", Optional.ofNullable(CompetitionSchedule.competition.getRanking().getPlayerRank(player.getName())).orElse(ConfigReader.Message.noRank))
+                    .replace("{minute}", String.format("%02d",Competition.remainingTime/60))
+                    .replace("{second}",String.format("%02d",Competition.remainingTime%60))
+                    .replace("{point}", String.format("%.1f",Optional.ofNullable(CompetitionSchedule.competition.getRanking().getCompetitionPlayer(player.getName())).orElse(Competition.emptyPlayer).getScore()));
+        }
+        return newText;
     }
 }

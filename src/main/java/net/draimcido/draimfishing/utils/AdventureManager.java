@@ -16,30 +16,26 @@ public class AdventureManager {
 
     public static void consoleMessage(String s) {
         Audience au = Main.adventure.sender(Bukkit.getConsoleSender());
-        MiniMessage mm = MiniMessage.miniMessage();
-        Component parsed = mm.deserialize(s);
+        Component parsed = Main.miniMessage.deserialize(s);
         au.sendMessage(parsed);
     }
 
     public static void playerMessage(Player player, String s) {
         Audience au = Main.adventure.player(player);
-        MiniMessage mm = MiniMessage.miniMessage();
-        Component parsed = mm.deserialize(s);
+        Component parsed = Main.miniMessage.deserialize(s);
         au.sendMessage(parsed);
     }
 
     public static void playerTitle(Player p, String s1, String s2, int in, int duration, int out) {
         Audience au = Main.adventure.player(p);
-        MiniMessage mm = MiniMessage.miniMessage();
         Title.Times times = Title.Times.times(Duration.ofMillis(in), Duration.ofMillis(duration), Duration.ofMillis(out));
-        Title title = Title.title(mm.deserialize(s1), mm.deserialize(s2), times);
+        Title title = Title.title(Main.miniMessage.deserialize(s1), Main.miniMessage.deserialize(s2), times);
         au.showTitle(title);
     }
 
     public static void playerActionBar(Player p, String s) {
         Audience au = Main.adventure.player(p);
-        MiniMessage mm = MiniMessage.miniMessage();
-        au.sendActionBar(mm.deserialize(s));
+        au.sendActionBar(Main.miniMessage.deserialize(s));
     }
 
     public static void playerSound(Player p, Sound.Source source, Key key) {

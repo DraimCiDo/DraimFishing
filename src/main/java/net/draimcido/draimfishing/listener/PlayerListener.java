@@ -17,6 +17,7 @@ import net.draimcido.draimfishing.item.Loot;
 import net.draimcido.draimfishing.item.Rod;
 import net.draimcido.draimfishing.requirements.FishingCondition;
 import net.draimcido.draimfishing.requirements.Requirement;
+import net.draimcido.draimfishing.utils.Modifier;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -43,8 +44,7 @@ public class PlayerListener implements Listener {
 
     private final HashMap<Player, Long> coolDown = new HashMap<>();
     private final HashMap<Player, Loot> nextLoot = new HashMap<>();
-    private final HashMap<Player, Integer> modifier = new HashMap<>();
-    private final HashSet<Player> willDouble = new HashSet<>();
+    private final HashMap<Player, Modifier> modifiers = new HashMap<>();
     public static ConcurrentHashMap<Player, FishingPlayer> fishingPlayers = new ConcurrentHashMap<>();
 
     @EventHandler
@@ -68,6 +68,7 @@ public class PlayerListener implements Listener {
                 boolean noRod = true;
                 double timeModifier = 1;
                 double doubleLoot = 0;
+                double scoreModifier = 1;
                 int difficultyModifier = 0;
 
                 HashMap<String, Integer> pm1 = new HashMap<>();
@@ -87,6 +88,7 @@ public class PlayerListener implements Listener {
                                 if (rod.getTime() != 0) timeModifier *= rod.getTime();
                                 if (rod.getDoubleLoot() != 0) doubleLoot += rod.getDoubleLoot();
                                 if (rod.getDifficulty() != 0) difficultyModifier += rod.getDifficulty();
+                                if (rod.getScoreModifier() != 0) scoreModifier *= rod.getScoreModifier();
                                 noRod = false;
                             }
                         }
@@ -99,6 +101,7 @@ public class PlayerListener implements Listener {
                                 if (bait.getTime() != 0) timeModifier *= bait.getTime();
                                 if (bait.getDoubleLoot() != 0) doubleLoot += bait.getDoubleLoot();
                                 if (bait.getDifficulty() != 0) difficultyModifier += bait.getDifficulty();
+                                if (bait.getScoreModifier() != 0) scoreModifier *= bait.getScoreModifier();
                                 mainHandItem.setAmount(mainHandItem.getAmount() - 1);
                             }
                         }
@@ -122,6 +125,7 @@ public class PlayerListener implements Listener {
                                 if (bait.getTime() != 0) timeModifier *= bait.getTime();
                                 if (bait.getDoubleLoot() != 0) doubleLoot += bait.getDoubleLoot();
                                 if (bait.getDifficulty() != 0) difficultyModifier += bait.getDifficulty();
+                                if (bait.getScoreModifier() != 0) scoreModifier *= bait.getScoreModifier();
                                 offHandItem.setAmount(offHandItem.getAmount() - 1);
                             }
                         }else if (noRod && offHandCompound.getString("type").equals("rod")){
@@ -133,6 +137,7 @@ public class PlayerListener implements Listener {
                                 if (rod.getTime() != 0) timeModifier *= rod.getTime();
                                 if (rod.getDoubleLoot() != 0) doubleLoot += rod.getDoubleLoot();
                                 if (rod.getDifficulty() != 0) difficultyModifier += rod.getDifficulty();
+                                if (rod.getScoreModifier() != 0) scoreModifier *= rod.getScoreModifier();
                                 noRod = false;
                             }
                         }
@@ -156,13 +161,11 @@ public class PlayerListener implements Listener {
                     return;
                 }
 
-                if (doubleLoot > Math.random()) {
-                    willDouble.add(player);
-                }else {
-                    willDouble.remove(player);
-                }
-
-                modifier.put(player, difficultyModifier);
+                Modifier modifier = new Modifier();
+                modifier.setDifficultyModifier(difficultyModifier);
+                modifier.setScoreModifier(scoreModifier);
+                modifier.setWillDouble(doubleLoot > Math.random());
+                modifiers.put(player, modifier);
 
                 double[] weights = new double[possibleLoots.size()];
                 int index = 0;
@@ -228,11 +231,11 @@ public class PlayerListener implements Listener {
                 String layout = Optional.ofNullable(lootInstance.getLayout()).orElseGet(() ->{
                     Random generator = new Random();
                     Object[] values = ConfigReader.LAYOUT.keySet().toArray();
-                    return (String) values[generator.nextInt(values.length)];
+                    return (String) values[new Random().nextInt(values.length)];
                 });
 
                 int difficulty = lootInstance.getDifficulty().getSpeed();
-                difficulty += modifier.get(player);
+                difficulty += Objects.requireNonNullElse(modifiers.get(player).getDifficultyModifier(), 0);;
                 if (difficulty < 1){
                     difficulty = 1;
                 }
@@ -271,7 +274,7 @@ public class PlayerListener implements Listener {
                             Vector vector = player.getLocation().subtract(location).toVector().multiply(0.1);
                             vector = vector.setY((vector.getY()+0.2)*1.2);
                             item.setVelocity(vector);
-                            if (willDouble.contains(player)) {
+                            if (modifiers.get(player).willDouble()){
                                 Entity item2 = location.getWorld().dropItem(location, itemStack);
                                 item2.setVelocity(vector);
                             }
@@ -300,7 +303,8 @@ public class PlayerListener implements Listener {
                         ConfigReader.Config.skillXP.addXp(player, lootInstance.getSkillXP());
                     }
                     if (CompetitionSchedule.competition != null && CompetitionSchedule.competition.isGoingOn()){
-                        CompetitionSchedule.competition.refreshRanking(player.getName(), lootInstance);
+                        float score = (float) (lootInstance.getScore() * modifiers.get(player).getScoreModifier());
+                        CompetitionSchedule.competition.refreshRanking(player.getName(), score);
                         BossBarManager.joinCompetition(player);
                     }
                     AdventureManager.playerTitle(player, ConfigReader.Title.success_title.get((int) (ConfigReader.Title.success_title.size()*Math.random())).replace("{loot}",lootInstance.getNick()), ConfigReader.Title.success_subtitle.get((int) (ConfigReader.Title.success_subtitle.size()*Math.random())).replace("{loot}",lootInstance.getNick()), ConfigReader.Title.success_in, ConfigReader.Title.success_stay, ConfigReader.Title.success_out);
@@ -326,8 +330,7 @@ public class PlayerListener implements Listener {
         player.removePotionEffect(PotionEffectType.SLOW);
         coolDown.remove(player);
         nextLoot.remove(player);
-        modifier.remove(player);
-        willDouble.remove(player);
+        modifiers.remove(player);
         fishingPlayers.remove(player);
     }
 

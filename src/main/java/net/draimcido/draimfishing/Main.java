@@ -2,8 +2,11 @@ package net.draimcido.draimfishing;
 
 import net.draimcido.draimfishing.competition.CompetitionSchedule;
 import net.draimcido.draimfishing.competition.bossbar.BossBarManager;
+import net.draimcido.draimfishing.helper.LibraryLoader;
+import net.draimcido.draimfishing.listener.MMOItemsConverter;
 import net.draimcido.draimfishing.utils.AdventureManager;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.draimcido.draimfishing.command.Execute;
 import net.draimcido.draimfishing.command.TabComplete;
 import net.draimcido.draimfishing.listener.PlayerListener;
@@ -16,12 +19,21 @@ public final class Main extends JavaPlugin {
 
     public static JavaPlugin instance;
     public static BukkitAudiences adventure;
+    public static MiniMessage miniMessage;
     private CompetitionSchedule competitionSchedule;
 
     @Override
-    public void onEnable() {
+    public void onLoad() {
         instance = this;
+        LibraryLoader.load("redis.clients","jedis","4.2.3","https://repo.maven.apache.org/maven2/");
+        LibraryLoader.load("org.apache.commons","commons-pool2","2.11.1","https://repo.maven.apache.org/maven2/");
+        LibraryLoader.load("dev.dejvokep","boosted-yaml","1.3","https://repo.maven.apache.org/maven2/");
+    }
+
+    @Override
+    public void onEnable() {
         adventure = BukkitAudiences.create(this);
+        miniMessage = MiniMessage.miniMessage();
         Objects.requireNonNull(Bukkit.getPluginCommand("draimfishing")).setExecutor(new Execute());
         Objects.requireNonNull(Bukkit.getPluginCommand("draimfishing")).setTabCompleter(new TabComplete());
         Bukkit.getPluginManager().registerEvents(new PlayerListener(),this);
@@ -32,6 +44,10 @@ public final class Main extends JavaPlugin {
             competitionSchedule.checkTime();
             Bukkit.getPluginManager().registerEvents(new BossBarManager(), this);
         }
+        if (ConfigReader.Config.convertMMOItems){
+            Bukkit.getPluginManager().registerEvents(new MMOItemsConverter(), this);
+        }
+        ConfigReader.tryEnableJedis();
         AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><color:#E1FFFF>Плагин запущен!");
     }
 

@@ -1,8 +1,8 @@
 example:
 
-  #TOTAL_POINTS
+  #TOTAL_SCORE
   #CATCH_AMOUNT
-  goal: TOTAL_POINTS
+  goal: CATCH_AMOUNT
 
   start-time:
     - '5:30'
@@ -10,22 +10,35 @@ example:
 
   duration: 300  #seconds
 
+  min-players: 2
+
   bossbar:
     enable: true
     color: YELLOW
     overlay: PROGRESS
-    text: 'Time Left:{time}s Rank:{rank} Time Left:{minute}m{second}s Points:{point}'
+    text: '<gray>Time Left: <gold>{time}s <gray>Rank: <gold>{rank} <gray>Time Left: <gold>{minute}m{second}s <gray>Points: <gold>{point}'
     refresh-rate: 10
 
   broadcast:
     start:
-      - 'The competition has started. Start Fishing to join!'
+      - '<red>        <red>⚠<aqua><bold>Fishing competition<red>⚠'
+      - '<red>'
+      - '<blue>----------------------------------------'
+      - ''
+      - '<gray>The competition has started. Start <gold>Fishing<gray> to join!'
+      - ''
+      - '<blue>----------------------------------------'
     end:
-      - 'The competition has ended!'
-      - '  ① {1st} {1st_points}points'
-      - '  ② {2nd} {2nd_points}points'
-      - '  ③ {3rd} {3rd_points}points'
-
+      - '<red>        <red>⚠<aqua><bold>Fishing competition<red>⚠'
+      - '<red>'
+      - '<blue>----------------------------------------'
+      - ''
+      - '<gray>The competition has ended!'
+      - '  <gold>① <gray>{1st} {1st_points}points'
+      - '  <gray>② <gray>{2nd} {2nd_points}points'
+      - '  <white>③ <gray>{3rd} {3rd_points}points'
+      - ''
+      - '<blue>----------------------------------------'
   prize:
     1:
       commands:

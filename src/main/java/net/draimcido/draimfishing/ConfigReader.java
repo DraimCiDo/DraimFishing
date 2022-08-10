@@ -1,5 +1,15 @@
 package net.draimcido.draimfishing;
 
+import dev.dejvokep.boostedyaml.YamlDocument;
+import dev.dejvokep.boostedyaml.dvs.versioning.BasicVersioning;
+import dev.dejvokep.boostedyaml.settings.dumper.DumperSettings;
+import dev.dejvokep.boostedyaml.settings.general.GeneralSettings;
+import dev.dejvokep.boostedyaml.settings.loader.LoaderSettings;
+import dev.dejvokep.boostedyaml.settings.updater.UpdaterSettings;
+import net.draimcido.draimfishing.competition.reward.Reward;
+import net.draimcido.draimfishing.competition.reward.CommandImpl;
+import net.draimcido.draimfishing.competition.reward.MessageImpl;
+import net.draimcido.draimfishing.helper.Log;
 import net.kyori.adventure.bossbar.BossBar;
 import net.draimcido.draimfishing.competition.CompetitionConfig;
 import net.draimcido.draimfishing.competition.Goal;
@@ -26,6 +36,7 @@ import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 
 public class ConfigReader{
@@ -42,7 +53,7 @@ public class ConfigReader{
     public static HashMap<String, CompetitionConfig> Competitions = new HashMap<>();
     public static HashMap<String, CompetitionConfig> CompetitionsCommand = new HashMap<>();
 
-    private static YamlConfiguration getConfig(String configName) {
+    public static YamlConfiguration getConfig(String configName) {
         File file = new File(Main.instance.getDataFolder(), configName);
         if (!file.exists()) {
             Main.instance.saveResource(configName, false);
@@ -54,6 +65,7 @@ public class ConfigReader{
         Config.loadConfig();
         Message.loadMessage();
         Title.loadTitle();
+        loadBars();
         loadLoot();
         loadUtil();
         loadRod();
@@ -71,6 +83,7 @@ public class ConfigReader{
         public static boolean needOpenWater;
         public static boolean needSpecialRod;
         public static boolean competition;
+        public static boolean convertMMOItems;
         public static String season_papi;
         public static String lang;
         public static int fishFinderCoolDown;
@@ -78,6 +91,12 @@ public class ConfigReader{
         public static SkillXP skillXP;
 
         public static void loadConfig() {
+
+            try {
+                YamlDocument.create(new File(Main.instance.getDataFolder(), "config.yml"), Main.instance.getResource("config.yml"), GeneralSettings.DEFAULT, LoaderSettings.builder().setAutoUpdate(true).build(), DumperSettings.DEFAULT, UpdaterSettings.builder().setVersioning(new BasicVersioning("config-version")).build());
+            }catch (IOException e){
+                Log.warn(e.getMessage());
+            }
 
             Main.instance.saveDefaultConfig();
             Main.instance.reloadConfig();
@@ -150,6 +169,7 @@ public class ConfigReader{
             }
 
             vanillaDrop = config.getBoolean("config.vanilla-loot-when-no-custom-fish");
+            convertMMOItems = config.getBoolean("config.convert-MMOITEMS");
             needOpenWater = config.getBoolean("config.need-open-water");
             needSpecialRod = config.getBoolean("config.need-special-rod");
             fishFinderCoolDown = config.getInt("config.fishfinder-cooldown");
@@ -157,26 +177,6 @@ public class ConfigReader{
             lang = config.getString("config.lang","ru");
             competition = config.getBoolean("config.fishing-competition",true);
 
-            LAYOUT.clear();
-            Set<String> keys = Objects.requireNonNull(config.getConfigurationSection("config.success-rate")).getKeys(false);
-            keys.forEach(key -> {
-                int range = config.getInt("config.success-rate." + key + ".range");
-                Set<String> rates = Objects.requireNonNull(config.getConfigurationSection("config.success-rate." + key + ".layout")).getKeys(false);
-                double[] successRate = new double[rates.size()];
-                for(int i = 0; i < rates.size(); i++){
-                    successRate[i] = config.getDouble("config.success-rate." + key + ".layout." +(i + 1));
-                }
-                int size = rates.size()*range -1;
-                Layout layout = new Layout(key, range, successRate, size);
-                layout.setTitle(config.getString("config.success-rate." + key + ".title"," "));
-                layout.setBar(config.getString("config.success-rate." + key + ".subtitle.bar","뀃"));
-                layout.setEnd(config.getString("config.success-rate." + key + ".subtitle.end","</font>"));
-                layout.setStart(config.getString("config.success-rate." + key + ".subtitle.start","<font:draimfishing:default>"));
-                layout.setPointer(config.getString("config.success-rate." + key + ".subtitle.pointer","뀄"));
-                layout.setPointerOffset(config.getString("config.success-rate." + key + ".subtitle.pointer_offset","뀂"));
-                layout.setOffset(config.getString("config.success-rate." + key + ".subtitle.offset","뀁"));
-                LAYOUT.put(key, layout);
-            });
         }
     }
 
@@ -340,7 +340,7 @@ public class ConfigReader{
                 loot.setNick(loot.getName());
             }
             loot.setUnbreakable(config.getBoolean("items." + key + ".unbreakable",false));
-            loot.setPoint((float) config.getDouble("items." + key + ".score"));
+            loot.setScore((float) config.getDouble("items." + key + ".score"));
 
             if (config.contains("items." + key + ".action.message"))
                 loot.setMsg(config.getString("items." + key + ".action.message"));
@@ -391,7 +391,7 @@ public class ConfigReader{
             if (loot.getMaterial().equalsIgnoreCase("AIR")) {
                 LOOTITEM.put(key, new ItemStack(Material.AIR));
             } else {
-                LOOTITEM.put(key, NBTUtil.addIdentifier(ItemStackGenerator.fromItem(loot), "loot", key));
+                LOOTITEM.put(key, ItemStackGenerator.fromItem(loot));
             }
         });
 
@@ -469,7 +469,7 @@ public class ConfigReader{
                 }else {
                     loot.setShowInFinder(true);
                 }
-                loot.setPoint((float) config.getDouble("mobs." + key + ".score"));
+                loot.setScore((float) config.getDouble("mobs." + key + ".score"));
                 if (config.contains("mobs." + key + ".requirements")){
                     List<Requirement> requirements = new ArrayList<>();
                     Objects.requireNonNull(config.getConfigurationSection("mobs." + key + ".requirements")).getKeys(false).forEach(requirement -> {
@@ -624,6 +624,7 @@ public class ConfigReader{
                         case "time" -> rodInstance.setTime(config.getDouble("rods." + key + ".modifier.time"));
                         case "difficulty" -> rodInstance.setDifficulty(config.getInt("rods." + key + ".modifier.difficulty"));
                         case "double-loot" -> rodInstance.setDoubleLoot(config.getDouble("rods." + key + ".modifier.double-loot"));
+                        case "score" -> rodInstance.setScoreModifier(config.getDouble("rods." + key + ".modifier.score"));
                     }
                 });
             }
@@ -701,6 +702,7 @@ public class ConfigReader{
                         case "time" -> baitInstance.setTime(config.getDouble("baits." + key + ".modifier.time"));
                         case "difficulty" -> baitInstance.setDifficulty(config.getInt("baits." + key + ".modifier.difficulty"));
                         case "double-loot" -> baitInstance.setDoubleLoot(config.getDouble("baits." + key + ".modifier.double-loot"));
+                        case "score" -> baitInstance.setScoreModifier(config.getDouble("baits." + key + ".modifier.score"));
                     }
                 });
             }
@@ -742,10 +744,61 @@ public class ConfigReader{
             if (config.contains(key + ".broadcast.end")){
                 competitionConfig.setEndMessage(config.getStringList(key + ".broadcast.end"));
             }
+            if (config.contains(key + ".min-players")){
+                competitionConfig.setMinPlayers(config.getInt(key + ".min-players"));
+            }
+            if (config.contains(key + ".prize")){
+                HashMap<String, List<Reward>> rewardsMap = new HashMap<>();
+                config.getConfigurationSection(key + ".prize").getKeys(false).forEach(rank -> {
+                    List<Reward> rewards = new ArrayList<>();
+                    if (config.contains(key + ".prize." + rank + ".messages")){
+                        rewards.add(new MessageImpl(config.getStringList(key + ".prize." + rank + ".messages")));
+                    }
+                    if (config.contains(key + ".prize." + rank + ".commands")){
+                        rewards.add(new CommandImpl(config.getStringList(key + ".prize." + rank + ".commands")));
+                    }
+                    rewardsMap.put(rank, rewards);
+                });
+                competitionConfig.setRewards(rewardsMap);
+            }
             config.getStringList(key + ".start-time").forEach(time -> {
                 Competitions.put(time, competitionConfig);
             });
             CompetitionsCommand.put(key, competitionConfig);
+        });
+    }
+
+    public static void tryEnableJedis(){
+        YamlConfiguration configuration = ConfigReader.getConfig("redis.yml");
+        if (configuration.getBoolean("redis.enable")){
+            JedisUtil.initializeRedis(configuration);
+            JedisUtil.useRedis = true;
+        }else {
+            JedisUtil.useRedis = false;
+        }
+    }
+
+    public static void loadBars(){
+        LAYOUT.clear();
+        YamlConfiguration config = ConfigReader.getConfig("bars.yml");
+        Set<String> keys = Objects.requireNonNull(config.getConfigurationSection("")).getKeys(false);
+        keys.forEach(key -> {
+            int range = config.getInt(key + ".range");
+            Set<String> rates = Objects.requireNonNull(config.getConfigurationSection(key + ".layout")).getKeys(false);
+            double[] successRate = new double[rates.size()];
+            for(int i = 0; i < rates.size(); i++){
+                successRate[i] = config.getDouble(key + ".layout." +(i + 1));
+            }
+            int size = rates.size()*range -1;
+            Layout layout = new Layout(key, range, successRate, size);
+            layout.setTitle(config.getString(key + ".title"," "));
+            layout.setBar(config.getString(key + ".subtitle.bar","뀃"));
+            layout.setEnd(config.getString(key + ".subtitle.end","</font>"));
+            layout.setStart(config.getString(key + ".subtitle.start","<font:draimishing:default>"));
+            layout.setPointer(config.getString(key + ".subtitle.pointer","뀄"));
+            layout.setPointerOffset(config.getString(key + ".subtitle.pointer_offset","뀂"));
+            layout.setOffset(config.getString(key + ".subtitle.offset","뀁"));
+            LAYOUT.put(key, layout);
         });
     }
 }

@@ -4,21 +4,38 @@ rods:
       name: 'Обычная деревянная удочка'
       lore:
         - 'Это всего лишь обычная удочка.'
-    custom-model-data: 1
-    # Усиление удочки
     modifier:
-      # Изменение рыбы для указанного предмета
-      # Сложение и вычитание
+      difficulty: 1
+
+  nature_fishing_cane:
+    display:
+      name: 'Природная рыболовная трость'
+    custom-model-data: 2
+    modifier:
       weight-PM:
-        normal: 20
-        creature: -10
-      # Умножение и деление
-      weight-MQ:
-        normal: 1.8
-        creature: 0.8
-      # Изменение времени добычи рыбы (>1 - увеличить, <1 - уменьшить)
-      time: 1.5
-      # Изменение сложности, например, первоначальная сложность равна (1-6), теперь она становится (1-5)
-      difficulty: -1
-      # Вероятность двойной добычи
-      double-loot: 0.05
+        silver: 5
+
+  silver_fishing_rod:
+    display:
+      name: 'Серебряная удочка'
+    custom-model-data: 3
+    modifier:
+      weight-PM:
+        silver: 20
+        gold: -10
+
+  golden_fishing_rod:
+    display:
+      name: 'Золотая удочка'
+    custom-model-data: 4
+    modifier:
+      weight-PM:
+        silver: -20
+        gold: 20
+
+  star_fishing_rod:
+    display:
+      name: 'Звездная удочка'
+    custom-model-data: 5
+      silver: 20
+      gold: 10

@@ -1,8 +1,9 @@
 utils:
   fishfinder:
-    material: compass
+    material: PAPER
     display:
       name: 'Поисковик рыбы'
       lore:
         - 'ПКМ, чтобы увидеть, какую рыбу можно поймать в этом месте!'
-    custom-model-data: 1
+    nbt:
+      - CustomModelData: '(Int) 647'
