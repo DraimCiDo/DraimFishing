@@ -1,5 +1,7 @@
 # DraimFishing
 
+![Total Lines](https://img.shields.io/tokei/lines/github/DraimCiDo/DraimFishing?style=plastic)
+
 Плагин на рыбалку для проекта DraimCiDo
 
 Примечание: Плагин находиться в активной разработки.
