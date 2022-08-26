@@ -3,8 +3,11 @@ package net.draimcido.draimfishing;
 import net.draimcido.draimfishing.competition.CompetitionSchedule;
 import net.draimcido.draimfishing.competition.bossbar.BossBarManager;
 import net.draimcido.draimfishing.helper.LibraryLoader;
+import net.draimcido.draimfishing.hook.Placeholders;
 import net.draimcido.draimfishing.listener.MMOItemsConverter;
+import net.draimcido.draimfishing.listener.PapiReload;
 import net.draimcido.draimfishing.utils.AdventureManager;
+import net.draimcido.draimfishing.utils.UpdateConfig;
 import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.draimcido.draimfishing.command.Execute;
@@ -21,6 +24,7 @@ public final class Main extends JavaPlugin {
     public static BukkitAudiences adventure;
     public static MiniMessage miniMessage;
     private CompetitionSchedule competitionSchedule;
+    public static Placeholders placeholders;
 
     @Override
     public void onLoad() {
@@ -47,7 +51,16 @@ public final class Main extends JavaPlugin {
         if (ConfigReader.Config.convertMMOItems){
             Bukkit.getPluginManager().registerEvents(new MMOItemsConverter(), this);
         }
+        if (ConfigReader.Config.papi){
+            placeholders = new Placeholders();
+            placeholders.register();
+            AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><color:#00BFFF>PlaceholderAPI <color:#E1FFFF>привязался!");
+            Bukkit.getPluginManager().registerEvents(new PapiReload(), this);
+        }
         ConfigReader.tryEnableJedis();
+        if (!Objects.equals(ConfigReader.Config.version, "3")){
+            UpdateConfig.update();
+        }
         AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><color:#E1FFFF>Плагин запущен!");
     }
 

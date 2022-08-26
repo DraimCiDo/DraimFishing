@@ -10,6 +10,9 @@ softdepend:
   - mcMMO
   - AureliumSkills
   - MMOCore
+  - EcoSkills
+  - RealisticSeasons
+  - DraimFarming
 commands:
   draimfishing:
     usage: /draimfishing

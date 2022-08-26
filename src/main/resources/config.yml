@@ -1,36 +1,51 @@
   # НЕ МЕНЯТЬ
-config-version: 1
+config-version: '3'
 
 config:
 
   lang: ru
 
   integrations:
+    # Регионы
     WorldGuard: false
+
+    # Мобы
     MythicMobs: false
+
+    # Плейсхолдеры
     PlaceholderAPI: true
+
+    # Скиллы
     mcMMO: false
     MMOCore: false
     AureliumSkills: false
+    EcoSkills: false
+
+    # Сезоны
+    DraimFarming: true
+    RealisticSeasons: false
 
   # Сезонные хар-ки
   season:
-    # Включить или нет
+    # Включить или нет, если заапущен интеграция RealisticSeasons или DraimFarming, это опция не будет работать.
     enable: false
     # Плейсхолдер сезона
     papi: '%draimfishing_season%'
-
-  # Если в определенном месте нет кастомной рыбы, может ли
-  # игрок получить ванильную рыбу во время рыбалки?
-  # Если установлено значение false, то игрок не сможет поймать какие-либо ванильные предметы.
-  # Вы также можете записать ванильную рыбу или лут в рыбалку(прямо в этот плуг)
-  vanilla-loot-when-no-custom-fish: false
 
   # Кастомную рыбу можно ловить только в открытых водоемах
   need-open-water: true
 
   # Может ли только удочка из этого плагина ловить рыбу?
   need-special-rod: false
+
+  # Может ли терять прочность удочка, при не удачной ловли рыбы
+  rod-lose-durability: true
+
+  # Если в определенном месте нет кастомной рыбы, может ли
+  # игрок получить ванильную рыбу во время рыбалки?
+  # Если установлено значение false, то игрок не сможет поймать какие-либо ванильные предметы.
+  # Вы также можете записать ванильную рыбу или лут в рыбалку(прямо в этот плуг)
+  vanilla-loot-when-no-custom-fish: true
 
   # Время перезарядки при использовании поиска рыбы (мс)
   fishfinder-cooldown: 3000

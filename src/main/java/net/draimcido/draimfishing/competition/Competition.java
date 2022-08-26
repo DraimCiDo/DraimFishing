@@ -30,6 +30,9 @@ public class Competition {
     private final BossBarConfig bossBarConfig;
     private final List<String> startMessage;
     private final List<String> endMessage;
+    private final List<String> endCommand;
+    private final List<String> startCommand;
+    private final List<String> joinCommand;
     private final HashMap<String, List<Reward>> rewardsMap;
 
     public static long remainingTime;
@@ -44,6 +47,9 @@ public class Competition {
         this.startMessage = competitionConfig.getStartMessage();
         this.endMessage = competitionConfig.getEndMessage();
         this.rewardsMap = competitionConfig.getRewards();
+        this.startCommand = competitionConfig.getStartCommand();
+        this.endCommand = competitionConfig.getEndCommand();
+        this.joinCommand = competitionConfig.getJoinCommand();
     }
 
     public void begin(boolean forceStart) {
@@ -69,6 +75,11 @@ public class Competition {
                     });
                 });
             }
+        }
+        if (startCommand != null){
+            startCommand.forEach(command -> {
+                Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), command);
+            });
         }
         else {
             playerCollections.forEach(player -> {
@@ -129,6 +140,11 @@ public class Competition {
                 newMessage.forEach(message -> {
                     AdventureManager.playerMessage(player, message);
                 });
+            });
+        }
+        if (endCommand != null){
+            endCommand.forEach(command -> {
+                Bukkit.getServer().dispatchCommand(Bukkit.getConsoleSender(), command);
             });
         }
         Bukkit.getScheduler().runTaskLaterAsynchronously(Main.instance, ()-> {
@@ -194,4 +210,5 @@ public class Competition {
     public boolean isGoingOn() {return status;}
     public BossBarConfig getBossBarConfig() {return bossBarConfig;}
     public Ranking getRanking() {return ranking;}
+    public List<String> getJoinCommand() {return joinCommand;}
 }

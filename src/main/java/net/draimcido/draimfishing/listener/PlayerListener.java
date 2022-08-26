@@ -33,6 +33,8 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.inventory.meta.Damageable;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
@@ -45,6 +47,7 @@ public class PlayerListener implements Listener {
     private final HashMap<Player, Long> coolDown = new HashMap<>();
     private final HashMap<Player, Loot> nextLoot = new HashMap<>();
     private final HashMap<Player, Modifier> modifiers = new HashMap<>();
+    private final HashMap<Player, FishHook> hooks = new HashMap<>();
     public static ConcurrentHashMap<Player, FishingPlayer> fishingPlayers = new ConcurrentHashMap<>();
 
     @EventHandler
@@ -60,6 +63,8 @@ public class PlayerListener implements Listener {
                 return;
             }
             coolDown.put(player, time);
+
+            hooks.put(player, event.getHook());
 
             Bukkit.getScheduler().runTaskAsynchronously(Main.instance, ()->{
 
@@ -242,7 +247,17 @@ public class PlayerListener implements Listener {
                 Difficulty difficult = new Difficulty(lootInstance.getDifficulty().getTimer(), difficulty);
 
                 fishingPlayers.put(player, new FishingPlayer(System.currentTimeMillis() + lootInstance.getTime(), new Timer(player, difficult, layout)));
+                if (lootInstance.getHookMsg() != null){
+                    lootInstance.getHookMsg().forEach(msg -> {
+                        AdventureManager.playerMessage(player, msg.replace("{loot}",lootInstance.getNick()).replace("{player}", player.getName()));
+                    });
+                }
                 Bukkit.getScheduler().runTask(Main.instance, ()->{
+                    if (lootInstance.getHookCommands() != null){
+                        lootInstance.getHookCommands().forEach(command ->{
+                            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command.replace("{player}", player.getName()));
+                        });
+                    }
                     player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, lootInstance.getTime()/50,3));
                 });
             });
@@ -256,7 +271,7 @@ public class PlayerListener implements Listener {
                 }
                 Loot lootInstance = nextLoot.get(player);
                 Layout layout = ConfigReader.LAYOUT.get(fishingPlayers.get(player).getTimer().getLayout());
-                int last = (fishingPlayers.get(player).getTimer().getTimerTask().getProgress() + 1)/layout.getRange();
+                int last = (fishingPlayers.get(player).getTimer().getTimerTask().getProgress())/layout.getRange();
                 fishingPlayers.remove(player);
                 player.removePotionEffect(PotionEffectType.SLOW);
                 if (ConfigReader.Config.needOpenWater && !event.getHook().isInOpenWater()){
@@ -281,7 +296,9 @@ public class PlayerListener implements Listener {
                         }
                     }
                     if (lootInstance.getMsg() != null){
-                        AdventureManager.playerMessage(player, ConfigReader.Message.prefix + lootInstance.getMsg().replace("{loot}",lootInstance.getNick()).replace("{player}", player.getName()));
+                        lootInstance.getMsg().forEach(msg -> {
+                            AdventureManager.playerMessage(player, msg.replace("{loot}",lootInstance.getNick()).replace("{player}", player.getName()));
+                        });
                     }
                     if (lootInstance.getCommands() != null){
                         lootInstance.getCommands().forEach(command ->{
@@ -289,7 +306,7 @@ public class PlayerListener implements Listener {
                                     replaceAll("\\{x}", String.valueOf(Math.round(location.getX()))).
                                     replaceAll("\\{y}", String.valueOf(Math.round(location.getY()))).
                                     replaceAll("\\{z}", String.valueOf(Math.round(location.getZ()))).
-                                    replaceAll("\\{player}", event.getPlayer().getName()).
+                                    replaceAll("\\{player}", player.getName()).
                                     replaceAll("\\{world}", player.getWorld().getName()).
                                     replaceAll("\\{loot}", lootInstance.getNick());
                             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand);
@@ -301,6 +318,27 @@ public class PlayerListener implements Listener {
                     }
                     if (lootInstance.getSkillXP() != 0) {
                         ConfigReader.Config.skillXP.addXp(player, lootInstance.getSkillXP());
+                    }
+                    if (ConfigReader.Config.loseDurability){
+                        PlayerInventory inventory = player.getInventory();
+                        ItemStack mainHand = inventory.getItemInMainHand();
+                        if (mainHand.getType() == Material.FISHING_ROD){
+                            Damageable damageable = (Damageable) mainHand.getItemMeta();
+                            if (damageable.hasDamage()) System.out.println(1);
+                            damageable.setDamage(damageable.getDamage() + 1);
+                            Bukkit.getScheduler().runTaskLater(Main.instance, ()->{
+                                mainHand.setItemMeta((ItemMeta) damageable);
+                            },1);
+                        }else {
+                            ItemStack offHand = inventory.getItemInOffHand();
+                            if (offHand.getType() == Material.FISHING_ROD){
+                                Damageable damageable = (Damageable) offHand.getItemMeta();
+                                damageable.setDamage(damageable.getDamage() + 1);
+                                Bukkit.getScheduler().runTaskLater(Main.instance, ()->{
+                                    offHand.setItemMeta((ItemMeta) damageable);
+                                },1);
+                            }
+                        }
                     }
                     if (CompetitionSchedule.competition != null && CompetitionSchedule.competition.isGoingOn()){
                         float score = (float) (lootInstance.getScore() * modifiers.get(player).getScoreModifier());
@@ -328,6 +366,10 @@ public class PlayerListener implements Listener {
     public void onQUit(PlayerQuitEvent event){
         Player player = event.getPlayer();
         player.removePotionEffect(PotionEffectType.SLOW);
+        if (hooks.get(player) != null){
+            hooks.get(player).remove();
+        }
+        hooks.remove(player);
         coolDown.remove(player);
         nextLoot.remove(player);
         modifiers.remove(player);

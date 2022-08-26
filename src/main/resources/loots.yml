@@ -43,6 +43,11 @@ items:
       command:
         - 'say Игрок {player} в {world},{x},{y},{z} словил {loot}!'
       exp: 10
+    action-hook:
+      message:
+        - 'The fish is hooked！'
+      command:
+        - 'effect give {player} minecraft:slowness 30 10'
     # Вес пойманной рыбы
     weight: 10
     # Название группы, в которой находится эта рыба

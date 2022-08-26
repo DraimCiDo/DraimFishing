@@ -1,23 +1,15 @@
 package net.draimcido.draimfishing;
 
-import dev.dejvokep.boostedyaml.YamlDocument;
-import dev.dejvokep.boostedyaml.dvs.versioning.BasicVersioning;
-import dev.dejvokep.boostedyaml.settings.dumper.DumperSettings;
-import dev.dejvokep.boostedyaml.settings.general.GeneralSettings;
-import dev.dejvokep.boostedyaml.settings.loader.LoaderSettings;
-import dev.dejvokep.boostedyaml.settings.updater.UpdaterSettings;
 import net.draimcido.draimfishing.competition.reward.Reward;
 import net.draimcido.draimfishing.competition.reward.CommandImpl;
 import net.draimcido.draimfishing.competition.reward.MessageImpl;
 import net.draimcido.draimfishing.helper.Log;
+import net.draimcido.draimfishing.hook.skill.*;
+import net.draimcido.draimfishing.hook.Placeholders;
 import net.kyori.adventure.bossbar.BossBar;
 import net.draimcido.draimfishing.competition.CompetitionConfig;
 import net.draimcido.draimfishing.competition.Goal;
 import net.draimcido.draimfishing.competition.bossbar.BossBarConfig;
-import net.draimcido.draimfishing.hook.skill.Aurelium;
-import net.draimcido.draimfishing.hook.skill.MMOCore;
-import net.draimcido.draimfishing.hook.skill.SkillXP;
-import net.draimcido.draimfishing.hook.skill.mcMMO;
 import net.draimcido.draimfishing.item.Bait;
 import net.draimcido.draimfishing.item.Loot;
 import net.draimcido.draimfishing.item.Rod;
@@ -36,7 +28,6 @@ import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.*;
 
 public class ConfigReader{
@@ -84,19 +75,18 @@ public class ConfigReader{
         public static boolean needSpecialRod;
         public static boolean competition;
         public static boolean convertMMOItems;
+        public static boolean loseDurability;
+        public static boolean rsSeason;
+        public static boolean dfSeason;
         public static String season_papi;
         public static String lang;
         public static int fishFinderCoolDown;
         public static double timeMultiply;
         public static SkillXP skillXP;
+        public static String version;
 
         public static void loadConfig() {
 
-            try {
-                YamlDocument.create(new File(Main.instance.getDataFolder(), "config.yml"), Main.instance.getResource("config.yml"), GeneralSettings.DEFAULT, LoaderSettings.builder().setAutoUpdate(true).build(), DumperSettings.DEFAULT, UpdaterSettings.builder().setVersioning(new BasicVersioning("config-version")).build());
-            }catch (IOException e){
-                Log.warn(e.getMessage());
-            }
 
             Main.instance.saveDefaultConfig();
             Main.instance.reloadConfig();
@@ -125,8 +115,6 @@ public class ConfigReader{
                 if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") == null){
                     AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><gradient:#D38312:#A83279>Не удалось инициализировать PlaceholderAPI!</gradient>");
                     papi = false;
-                }else {
-                    AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><color:#00BFFF>PlaceholderAPI <color:#E1FFFF>подвязался!");
                 }
             }
             skillXP = null;
@@ -155,23 +143,50 @@ public class ConfigReader{
                     AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><color:#00BFFF>MMOCore <color:#E1FFFF>подвязался!");
                 }
             }
+            if(config.getBoolean("config.integrations.EcoSkills",false)) {
+                if (Bukkit.getPluginManager().getPlugin("EcoSkills") == null) {
+                    Main.instance.getLogger().warning("Failed to initialize EcoSkills!");
+                } else {
+                    skillXP = new EcoSkill();
+                    AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><color:#00BFFF>EcoSkills <color:#E1FFFF>подвязался!");
+                }
+            }
 
 
             season = config.getBoolean("config.season.enable");
             if (!papi && season) {
                 season = false;
-            }
-
-            if (season) {
+            } else {
                 season_papi = config.getString("config.season.papi");
-            }else {
-                season_papi = null;
             }
 
-            vanillaDrop = config.getBoolean("config.vanilla-loot-when-no-custom-fish");
-            convertMMOItems = config.getBoolean("config.convert-MMOITEMS");
-            needOpenWater = config.getBoolean("config.need-open-water");
-            needSpecialRod = config.getBoolean("config.need-special-rod");
+            rsSeason = false;
+            if (config.getBoolean("config.integrations.RealisticSeasons",false)){
+                if (Bukkit.getPluginManager().getPlugin("RealisticSeasons") == null) Log.warn("Не удалось инизилизировать RealisticSeasons!");
+                else {
+                    rsSeason = true;
+                    AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><color:#00BFFF>RealisticSeasons <color:#E1FFFF>подвязался!");
+                }
+            }
+            dfSeason = false;
+            if (config.getBoolean("config.integrations.DraimFarming",false)){
+                if (Bukkit.getPluginManager().getPlugin("DraimFarming") == null) Log.warn("Не удалось инизилизировать DraimFarming!");
+                else {
+                    dfSeason = true;
+                    AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><color:#00BFFF>DraimFarming <color:#E1FFFF>подвязался!");
+                }
+            }
+
+            if (rsSeason || dfSeason){
+                season = true;
+            }
+
+            vanillaDrop = config.getBoolean("config.vanilla-loot-when-no-custom-fish", true);
+            convertMMOItems = config.getBoolean("config.convert-MMOITEMS", false);
+            needOpenWater = config.getBoolean("config.need-open-water", false);
+            needSpecialRod = config.getBoolean("config.need-special-rod", false);
+            loseDurability = config.getBoolean("config.rod-lose-durability", true);
+            version = config.getString("config-version");
             fishFinderCoolDown = config.getInt("config.fishfinder-cooldown");
             timeMultiply = config.getDouble("config.time-multiply");
             lang = config.getString("config.lang","ru");
@@ -343,9 +358,13 @@ public class ConfigReader{
             loot.setScore((float) config.getDouble("items." + key + ".score"));
 
             if (config.contains("items." + key + ".action.message"))
-                loot.setMsg(config.getString("items." + key + ".action.message"));
+                loot.setMsg(config.getStringList("items." + key + ".action.message"));
             if (config.contains("items." + key + ".action.command"))
                 loot.setCommands(config.getStringList("items." + key + ".action.command"));
+            if (config.contains("items." + key + ".action-hook.message"))
+                loot.setHookMsg(config.getStringList("items." + key + ".action-hook.message"));
+            if (config.contains("items." + key + ".action-hook.command"))
+                loot.setHookCommands(config.getStringList("items." + key + ".action-hook.command"));
             if (config.contains("items." + key + ".action.exp"))
                 loot.setExp(config.getInt("items." + key + ".action.exp"));
             if (config.contains("items." + key + ".layout"))
@@ -453,9 +472,13 @@ public class ConfigReader{
                 if (config.contains("mobs." + key + ".level"))
                     loot.setMmLevel(config.getInt("mobs." + key + ".level", 0));
                 if (config.contains("mobs." + key + ".action.message"))
-                    loot.setMsg(config.getString("mobs." + key + ".action.message"));
+                    loot.setMsg(config.getStringList("mobs." + key + ".action.message"));
                 if (config.contains("mobs." + key + ".action.command"))
                     loot.setCommands(config.getStringList("mobs." + key + ".action.command"));
+                if (config.contains("mobs." + key + ".action-hook.message"))
+                    loot.setHookMsg(config.getStringList("mobs." + key + ".action-hook.message"));
+                if (config.contains("mobs." + key + ".action-hook.command"))
+                    loot.setHookCommands(config.getStringList("mobs." + key + ".action-hook.command"));
                 if (config.contains("mobs." + key + ".action.exp"))
                     loot.setExp(config.getInt("mobs." + key + ".action.exp"));
                 if (config.contains("mobs." + key + ".skill-xp"))
@@ -743,6 +766,15 @@ public class ConfigReader{
             }
             if (config.contains(key + ".broadcast.end")){
                 competitionConfig.setEndMessage(config.getStringList(key + ".broadcast.end"));
+            }
+            if (config.contains(key + ".command.join")){
+                competitionConfig.setJoinCommand(config.getStringList(key + ".command.join"));
+            }
+            if (config.contains(key + ".command.start")){
+                competitionConfig.setStartCommand(config.getStringList(key + ".command.start"));
+            }
+            if (config.contains(key + ".command.end")){
+                competitionConfig.setEndCommand(config.getStringList(key + ".command.end"));
             }
             if (config.contains(key + ".min-players")){
                 competitionConfig.setMinPlayers(config.getInt(key + ".min-players"));
