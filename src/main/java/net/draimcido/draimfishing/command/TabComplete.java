@@ -5,23 +5,22 @@ import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.jetbrains.annotations.NotNull;
 
-import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 public class TabComplete implements TabCompleter {
     @Override
-    @ParametersAreNonnullByDefault
-    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+    public List<String> onTabComplete(CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
 
         if (!(sender.hasPermission("draimfishing.admin") || sender.isOp())) {
             return null;
         }
         if (args.length == 1){
             List<String> arrayList = new ArrayList<>();
-            for (String cmd : Arrays.asList("competition","reload","items","export")) {
+            for (String cmd : Arrays.asList("competition","reload", "items","import")) {
                 if (cmd.startsWith(args[0]))
                     arrayList.add(cmd);
             }
@@ -36,10 +35,10 @@ public class TabComplete implements TabCompleter {
                 }
                 return arrayList;
             }
-            if (args[0].equalsIgnoreCase("export")){
+            if (args[0].equalsIgnoreCase("import")){
                 return List.of("FileName");
             }
-            if (args[0].equalsIgnoreCase("competition")) {
+            if (args[0].equalsIgnoreCase("competition")){
                 List<String> arrayList = new ArrayList<>();
                 for (String cmd : List.of("start","end","cancel")) {
                     if (cmd.startsWith(args[1]))
@@ -59,8 +58,8 @@ public class TabComplete implements TabCompleter {
                     return arrayList;
                 }
             }
-            if (args[0].equalsIgnoreCase("competition")) {
-                if (args[1].equalsIgnoreCase("start")) {
+            if (args[0].equalsIgnoreCase("competition")){
+                if (args[1].equalsIgnoreCase("start")){
                     List<String> arrayList = new ArrayList<>();
                     for (String cmd : competitions()) {
                         if (cmd.startsWith(args[2]))
@@ -229,18 +228,26 @@ public class TabComplete implements TabCompleter {
     }
 
     private List<String> loots(){
-        return new ArrayList<>(ConfigReader.LOOTITEM.keySet());
+        ArrayList<String> loots = new ArrayList<>();
+        loots.addAll(ConfigReader.LootItem.keySet());
+        loots.addAll(ConfigReader.OTHERS.keySet());
+        return loots;
     }
+
     private List<String> utils(){
-        return new ArrayList<>(ConfigReader.UTIL.keySet());
+        return new ArrayList<>(ConfigReader.UtilItem.keySet());
     }
+
     private List<String> rods() {
-        return new ArrayList<>(ConfigReader.ROD.keySet());
+        return new ArrayList<>(ConfigReader.RodItem.keySet());
     }
+
     private List<String> baits() {
-        return new ArrayList<>(ConfigReader.BAIT.keySet());
+        return new ArrayList<>(ConfigReader.BaitItem.keySet());
     }
+
     private List<String> competitions() {
-        return new ArrayList<>(ConfigReader.CompetitionsCommand.keySet());
+        return new ArrayList<>(ConfigReader.CompetitionsC.keySet());
     }
 }
+

@@ -2,6 +2,7 @@ package net.draimcido.draimfishing.helper;
 
 import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
+
 import net.draimcido.draimfishing.Main;
 import org.apache.commons.lang.StringUtils;
 
@@ -17,7 +18,6 @@ import java.util.Objects;
  * Resolves {@link MavenLibrary} annotations for a class, and loads the dependency
  * into the classloader.
  */
-@NonnullByDefault
 public final class LibraryLoader {
 
     @SuppressWarnings("Guava")
@@ -93,7 +93,6 @@ public final class LibraryLoader {
         return jarDir;
     }
 
-    @NonnullByDefault
     public static final class Dependency {
         private final String groupId;
         private final String artifactId;

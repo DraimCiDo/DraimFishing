@@ -1,58 +1,91 @@
-  # НЕ МЕНЯТЬ
-config-version: '3'
+# don't change
+config-version: '8'
 
 config:
-
-  lang: ru
+  #en/es/cn
+  lang: en
 
   integrations:
-    # Регионы
+    # fishing region hook
     WorldGuard: false
-
-    # Мобы
+    # mobs hook
     MythicMobs: false
-
-    # Плейсхолдеры
+    # Papi hook
     PlaceholderAPI: true
-
-    # Скиллы
+    # Skill xp hook
+    # If skill xp is added not as expected please check if you have set skill-xp for each loot
+    # Some plugins like AureliumSkills will still add skill-xp when player failed to fish. Check the xp-source file in those skill plugins and set them to 0
     mcMMO: false
     MMOCore: false
     AureliumSkills: false
     EcoSkills: false
-
-    # Сезоны
-    DraimFarming: true
+    # You need a restart to cancel the Jobs xp getting in vanilla way
+    JobsReborn: false
+    # Season hook
+    DraimFarming: false
     RealisticSeasons: false
 
-  # Сезонные хар-ки
-  season:
-    # Включить или нет, если заапущен интеграция RealisticSeasons или DraimFarming, это опция не будет работать.
+  # Worlds where the special fishing mechanic take effects
+  whitelist-worlds:
     enable: false
-    # Плейсхолдер сезона
-    papi: '%draimfishing_season%'
+    worlds:
+      - world
 
-  # Кастомную рыбу можно ловить только в открытых водоемах
+  # Should the fishing bar only show after player reel in
+  # Otherwise the bar would show immediately the bobber is hooked
+  double-reel-in: true
+
+  other-loot:
+    # This is useful for vanilla loots
+    # Vanilla loot is available only when 'double-reel-in' is true
+    vanilla: true
+    # 0.4 means 40% of the loots are from vanilla
+    # and 60% are from CustomFishing Loot system
+    vanilla-ratio: 0.4
+    # Should vanilla loots have the same fishing mechanic CustomFishing provides
+    bar: true
+
+    # mcMMO treasure system
+    # chance represents the chance to try to be a mcMMO treasure
+    # But it doesn't mean 50% chance of the loot would be mcMMO treasure
+    # mcMMO has a complex treasure system
+    mcMMO: false
+    mcMMO-chance: 0.5
+
+  # The same to vanilla (refer to the wiki)
+  # https://technical-minecraft.fandom.com/wiki/Fishing
   need-open-water: true
 
-  # Может ли только удочка из этого плагина ловить рыбу?
-  need-special-rod: false
+  need-special-rod:
+    # if set true and "double-reel-in" is true, players must use rods with CustomFishing's NBT Tags to get loots in CustomFishing but they can experience the special fishing mechanic.
+    # This option will not work if "double-reel-in" is false because in that mode no vanilla loots are available
+    for-loots: false
+    # if set true and "double-reel-in" is true, players must use rods with CustomFishing's NBT Tags to experience the special fishing mechanic. Otherwise they can only fish in a vanilla way
+    to-fish: false
 
-  # Может ли терять прочность удочка, при не удачной ловли рыбы
+  # does rod lose durability when player successfully fish
   rod-lose-durability: true
 
-  # Если в определенном месте нет кастомной рыбы, может ли
-  # игрок получить ванильную рыбу во время рыбалки?
-  # Если установлено значение false, то игрок не сможет поймать какие-либо ванильные предметы.
-  # Вы также можете записать ванильную рыбу или лут в рыбалку(прямо в этот плуг)
-  vanilla-loot-when-no-custom-fish: true
-
-  # Время перезарядки при использовании поиска рыбы (мс)
+  # Cool down time of fish finder
   fishfinder-cooldown: 3000
 
-  # Изменение времени, необходимое для рыбалки
-  # Мин и Макс значение времени должно быть указано в paper.yml
+  # Change the time bobber needs to be hooked
   time-multiply: 2
 
-  # Удочка MMOItems превращается в DraimFishing удочку (требуется /reload)
-  convert-MMOITEMS: true
+  # Competition (Requires a restart)
+  fishing-competition: true
+
+  # Convert MMOItems' rod into CustomFishing's rod (Requires a restart)
+  # keep the same key name both in MMOItems and CustomFishing and rods can extend the bonus of those in CustomFishing
+  convert-MMOITEMS: false
+
+  # Prevent other players to pick up your fishing loot (Requires a restart)
+  # This is useful for players to fish in a public area
+  prevent-other-players-pick-up-loot: false
+
+  # If there's a plugin conflict, event priority sometimes works
+  # HIGHEST NORMAL LOWEST
+  event-priority: NORMAL
+
+  # If enabled, players would not be able to get job exp in vanilla way (Requires a restart)
+  disable-JobsReborn-fishing-exp: false

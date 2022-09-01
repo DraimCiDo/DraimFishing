@@ -1,7 +1,5 @@
 package net.draimcido.draimfishing.requirements;
 
-import net.draimcido.draimfishing.utils.AdventureManager;
-
 import java.util.List;
 
 public record World(List<String> worlds) implements Requirement {
@@ -16,7 +14,6 @@ public record World(List<String> worlds) implements Requirement {
         if (world != null) {
             return worlds.contains(world.getName());
         }
-        AdventureManager.consoleMessage("<red>[DraimFishing] This message should not appear, the world in which the player is fishing does not exist!</red>");
         return false;
     }
 }

@@ -11,4 +11,10 @@ public class MMOCore implements SkillXP{
         Profession profession = net.Indyuce.mmocore.MMOCore.plugin.professionManager.get("fishing");
         profession.giveExperience(net.Indyuce.mmocore.MMOCore.plugin.dataProvider.getDataManager().get(player), amount, null , EXPSource.OTHER);
     }
+
+    @Override
+    public int getLevel(Player player) {
+        return net.Indyuce.mmocore.MMOCore.plugin.dataProvider.getDataManager().get(player).getLevel();
+    }
 }
+

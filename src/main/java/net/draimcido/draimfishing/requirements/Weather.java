@@ -1,6 +1,5 @@
 package net.draimcido.draimfishing.requirements;
 
-import net.draimcido.draimfishing.utils.AdventureManager;
 import org.bukkit.World;
 
 import java.util.List;
@@ -30,7 +29,6 @@ public record Weather(List<String> weathers) implements Requirement {
             }
             return false;
         }
-        AdventureManager.consoleMessage("<red>[DraimFishing] This message should not appear, the world in which the player is fishing does not exist!</red>");
         return false;
     }
 }

@@ -23,7 +23,7 @@ public class BossBarSender extends BukkitRunnable {
     private final String text;
     private final int rate;
 
-    public BossBarSender(Player player, BossBarConfig bossbarConfig) {
+    public BossBarSender(Player player, BossBarConfig bossbarConfig){
         this.player = player;
         this.audience = Main.adventure.player(player);
         this.timer = 0;
@@ -33,11 +33,11 @@ public class BossBarSender extends BukkitRunnable {
         this.rate = bossbarConfig.getRate();
     }
 
-    public void hideBossbar() {
+    public void hideBossbar(){
         audience.hideBossBar(bossBar);
     }
 
-    public void showBossbar() {
+    public void showBossbar(){
         String newText = updateText();
         bossBar = BossBar.bossBar(
                 Main.miniMessage.deserialize(newText),
@@ -51,7 +51,7 @@ public class BossBarSender extends BukkitRunnable {
     public void run() {
         if (timer < rate){
             timer++;
-        } else {
+        }else {
             updateText();
             String newText = updateText();
             bossBar.name(Main.miniMessage.deserialize(newText));
@@ -70,9 +70,10 @@ public class BossBarSender extends BukkitRunnable {
         String newText;
         if (ConfigReader.Config.papi){
             newText = PapiHook.parse(player, text.replace("{time}", String.valueOf(Competition.remainingTime))
-                            .replace("{rank}", Optional.ofNullable(CompetitionSchedule.competition.getRanking().getPlayerRank(player.getName())).orElse(ConfigReader.Message.noRank))
-                            .replace("{minute}", String.format("%02d", Competition.remainingTime / 60))
-                            .replace("{point}", String.format("%.1f",Optional.ofNullable(CompetitionSchedule.competition.getRanking().getCompetitionPlayer(player.getName())).orElse(Competition.emptyPlayer).getScore())));
+                    .replace("{rank}", Optional.ofNullable(CompetitionSchedule.competition.getRanking().getPlayerRank(player.getName())).orElse(ConfigReader.Message.noRank))
+                    .replace("{minute}", String.format("%02d",Competition.remainingTime/60))
+                    .replace("{second}",String.format("%02d",Competition.remainingTime%60))
+                    .replace("{point}", String.format("%.1f",Optional.ofNullable(CompetitionSchedule.competition.getRanking().getCompetitionPlayer(player.getName())).orElse(Competition.emptyPlayer).getScore())));
         }else {
             newText = text.replace("{time}", String.valueOf(Competition.remainingTime))
                     .replace("{rank}", Optional.ofNullable(CompetitionSchedule.competition.getRanking().getPlayerRank(player.getName())).orElse(ConfigReader.Message.noRank))

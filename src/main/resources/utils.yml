@@ -1,9 +1,0 @@
-utils:
-  fishfinder:
-    material: PAPER
-    display:
-      name: 'Поисковик рыбы'
-      lore:
-        - 'ПКМ, чтобы увидеть, какую рыбу можно поймать в этом месте!'
-    nbt:
-      - CustomModelData: '(Int) 647'

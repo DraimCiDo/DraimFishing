@@ -1,8 +1,10 @@
 package net.draimcido.draimfishing.titlebar;
 
-import net.draimcido.draimfishing.ConfigReader;
 import net.draimcido.draimfishing.Main;
-import net.draimcido.draimfishing.utils.AdventureManager;
+import net.draimcido.draimfishing.object.Layout;
+import net.draimcido.draimfishing.utils.AdventureUtil;
+import net.draimcido.draimfishing.ConfigReader;
+import net.draimcido.draimfishing.object.Difficulty;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -11,7 +13,7 @@ import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitScheduler;
 
-import static net.draimcido.draimfishing.listener.PlayerListener.fishingPlayers;
+import static net.draimcido.draimfishing.listener.FishListener.fishingPlayers;
 
 public class TimerTask extends BukkitRunnable {
 
@@ -22,7 +24,7 @@ public class TimerTask extends BukkitRunnable {
     private int internalTimer;
     private final int size;
     private boolean face;
-    private BukkitScheduler bukkitScheduler;
+    private final BukkitScheduler bukkitScheduler;
 
     private final String start;
     private final String bar;
@@ -61,12 +63,13 @@ public class TimerTask extends BukkitRunnable {
             bukkitScheduler.cancelTask(taskID);
             return;
         }
-
         if (System.currentTimeMillis() > fishingPlayers.get(player).getFishingTime()){
+            AdventureUtil.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.escape);
             fishingPlayers.remove(player);
             bukkitScheduler.cancelTask(taskID);
             return;
         }
+
         int timer = difficulty.getTimer() - 1;
         int speed = difficulty.getSpeed();
         if (progress <= speed - 1){
@@ -95,7 +98,7 @@ public class TimerTask extends BukkitRunnable {
             }
         }
         stringBuilder.append(end);
-        AdventureManager.playerTitle(player, title, stringBuilder.toString(),0,300,0);
+        AdventureUtil.playerTitle(player, title, stringBuilder.toString(),0,500,0);
         PlayerInventory playerInventory = player.getInventory();
         if (playerInventory.getItemInMainHand().getType() != Material.FISHING_ROD && playerInventory.getItemInOffHand().getType() != Material.FISHING_ROD){
             fishingPlayers.remove(player);

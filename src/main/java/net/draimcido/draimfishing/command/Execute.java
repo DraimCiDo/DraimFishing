@@ -1,25 +1,25 @@
 package net.draimcido.draimfishing.command;
 
-import net.draimcido.draimfishing.ConfigReader;
+import net.draimcido.draimfishing.Main;
 import net.draimcido.draimfishing.competition.CompetitionSchedule;
-import net.draimcido.draimfishing.item.ItemGive;
-import net.draimcido.draimfishing.utils.AdventureManager;
-import net.draimcido.draimfishing.utils.SaveItem;
+import net.draimcido.draimfishing.utils.AdventureUtil;
+import net.draimcido.draimfishing.ConfigReader;
+import net.draimcido.draimfishing.utils.ItemUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-
-import javax.annotation.ParametersAreNonnullByDefault;
+import org.bukkit.inventory.ItemStack;
+import org.jetbrains.annotations.NotNull;
 
 public class Execute implements CommandExecutor {
+
     @Override
-    @ParametersAreNonnullByDefault
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+    public boolean onCommand(CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
 
         if (!(sender.hasPermission("draimfishing.admin") || sender.isOp())) {
-            AdventureManager.playerMessage((Player) sender, ConfigReader.Message.prefix + ConfigReader.Message.noPerm);
+            AdventureUtil.playerMessage((Player) sender,ConfigReader.Message.prefix + ConfigReader.Message.noPerm);
             return true;
         }
 
@@ -29,48 +29,50 @@ public class Execute implements CommandExecutor {
         }
 
         if (args[0].equalsIgnoreCase("reload")) {
-            ConfigReader.Reload();
-            if (sender instanceof Player){
-                AdventureManager.playerMessage((Player) sender, ConfigReader.Message.prefix + ConfigReader.Message.reload);
-            }else {
-                AdventureManager.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.reload);
-            }
+            Bukkit.getScheduler().runTaskAsynchronously(Main.instance, ()-> {
+                ConfigReader.Reload();
+                if (sender instanceof Player){
+                    AdventureUtil.playerMessage((Player) sender, ConfigReader.Message.prefix + ConfigReader.Message.reload);
+                }else {
+                    AdventureUtil.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.reload);
+                }
+            });
             return true;
         }
 
-        if (args[0].equalsIgnoreCase("export")) {
+        if (args[0].equalsIgnoreCase("import")) {
             if (args.length < 2){
                 lackArgs(sender);
                 return true;
             }
             if (sender instanceof Player player){
-                SaveItem.saveToFile(player.getInventory().getItemInMainHand(), args[1]);
-                AdventureManager.playerMessage(player, ConfigReader.Message.prefix + "Готово!");
-            } else {
-                AdventureManager.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.noConsole);
+                ItemUtil.saveToFile(player.getInventory().getItemInMainHand(), args[1]);
+                AdventureUtil.playerMessage(player, ConfigReader.Message.prefix + "Done! File is saved to /DraimFishing/loots/" + args[1] + ".yml");
+            }else {
+                AdventureUtil.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.noConsole);
             }
             return true;
         }
 
         if (args[0].equalsIgnoreCase("competition")) {
-            if (args.length < 2) {
+            if (args.length < 2){
                 lackArgs(sender);
                 return true;
             }
-            if (args[1].equalsIgnoreCase("start")) {
-                if (args.length < 3) {
+            if (args[1].equalsIgnoreCase("start")){
+                if (args.length < 3){
                     lackArgs(sender);
                     return true;
                 }
-                if (CompetitionSchedule.startCompetition(args[2])) {
+                if (CompetitionSchedule.startCompetition(args[2])){
                     forceSuccess(sender);
-                } else {
+                }else {
                     forceFailure(sender);
                 }
-            } else if (args[1].equalsIgnoreCase("end")) {
+            }else if (args[1].equalsIgnoreCase("end")){
                 CompetitionSchedule.endCompetition();
                 forceEnd(sender);
-            } else if (args[1].equalsIgnoreCase("cancel")) {
+            }else if (args[1].equalsIgnoreCase("cancel")){
                 CompetitionSchedule.cancelCompetition();
                 forceCancel(sender);
             }
@@ -84,114 +86,136 @@ public class Execute implements CommandExecutor {
             }
             if (args[1].equalsIgnoreCase("loot")) {
                 if (args[2].equalsIgnoreCase("get")) {
-                    //Длина параметра проверки [0]предмет [1]лут [2]получение [3]xxx [4] (кол-во)
                     if (sender instanceof Player player){
-                        //Существует ли он в кэше?
-                        if (!ConfigReader.LOOTITEM.containsKey(args[3])){
+                        if (ConfigReader.LootItem.containsKey(args[3])){
+                            if (args.length == 4){
+                                ItemUtil.givePlayerLoot(player, args[3], 1);
+                                AdventureUtil.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", "1").replace("{Item}",args[3]));
+                            }else {
+                                if (Integer.parseInt(args[4]) < 1){
+                                    wrongAmount(sender);
+                                    return true;
+                                }
+                                ItemUtil.givePlayerLoot(player, args[3], Integer.parseInt(args[4]));
+                                AdventureUtil.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", args[4]).replace("{Item}",args[3]));
+                            }
+                        }else if (ConfigReader.OTHERS.containsKey(args[3])){
+                            if (args.length == 4){
+                                player.getInventory().addItem(ItemUtil.getItemStackFromOtherPlugins(args[3]));
+                                AdventureUtil.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", "1").replace("{Item}",args[3]));
+                            }else {
+                                if (Integer.parseInt(args[4]) < 1){
+                                    wrongAmount(sender);
+                                    return true;
+                                }
+                                ItemStack itemStack = ItemUtil.getItemStackFromOtherPlugins(args[3]);
+                                itemStack.setAmount(Integer.parseInt(args[4]));
+                                player.getInventory().addItem(itemStack);
+                                AdventureUtil.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", args[4]).replace("{Item}",args[3]));
+                            }
+                        }else {
                             noItem(sender);
                             return true;
                         }
-                        if (args.length == 4){
-                            ItemGive.givePlayerLoot(player, args[3], 1);
-                            AdventureManager.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", "1").replace("{Item}",args[3]));
-                        }else {
-                            if (Integer.parseInt(args[4]) < 1){
-                                wrongAmount(sender);
-                                return true;
-                            }
-                            ItemGive.givePlayerLoot(player, args[3], Integer.parseInt(args[4]));
-                            AdventureManager.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", args[4]).replace("{Item}",args[3]));
-                        }
+
                     }else {
-                        AdventureManager.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.noConsole);
+                        AdventureUtil.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.noConsole);
                     }
                     return true;
                 }
                 if (args[2].equalsIgnoreCase("give")) {
-                    //Длина параметра проверки  [0]items [1]loot [2]give [3]player [4]xxx [5](amount)
                     if (args.length < 5){
                         lackArgs(sender);
                         return true;
                     }
                     Player player = Bukkit.getPlayer(args[3]);
-                    //Находится ли игрок в сети
                     if (player == null){
                         notOnline(sender);
                         return true;
                     }
-                    //Существует ли он в кэше?
-                    if (!ConfigReader.LOOTITEM.containsKey(args[4])){
-                        noItem(sender);
-                        return true;
-                    }
-                    if (args.length == 5){
-                        ItemGive.givePlayerLoot(player, args[4], 1);
-                        giveItem(sender, args[3], args[4], 1);
-                    }else {
-                        if (Integer.parseInt(args[5]) < 1){
-                            wrongAmount(sender);
+                    if (ConfigReader.LootItem.containsKey(args[4])){
+                        if (args.length == 5){
+                            ItemUtil.givePlayerLoot(player, args[4], 1);
+                            giveItem(sender, args[3], args[4], 1);
                             return true;
                         }
-                        ItemGive.givePlayerLoot(player, args[4], Integer.parseInt(args[5]));
-                        giveItem(sender, args[3], args[4], Integer.parseInt(args[5]));
+                        else {
+                            if (Integer.parseInt(args[5]) < 1){
+                                wrongAmount(sender);
+                                return true;
+                            }
+                            ItemUtil.givePlayerLoot(player, args[4], Integer.parseInt(args[5]));
+                            giveItem(sender, args[3], args[4], Integer.parseInt(args[5]));
+                        }
+                    }else if (ConfigReader.OTHERS.containsKey(args[4])){
+                        if (args.length == 5){
+                            player.getInventory().addItem(ItemUtil.getItemStackFromOtherPlugins(args[4]));
+                            giveItem(sender, args[3], args[4], 1);
+                            return true;
+                        }
+                        else {
+                            if (Integer.parseInt(args[5]) < 1) {
+                                wrongAmount(sender);
+                                return true;
+                            }
+                            ItemStack itemStack = ItemUtil.getItemStackFromOtherPlugins(args[4]);
+                            itemStack.setAmount(Integer.parseInt(args[5]));
+                            player.getInventory().addItem(itemStack);
+                            giveItem(sender, args[3], args[4], Integer.parseInt(args[5]));
+                        }
+                    }else {
+                        noItem(sender);
+                        return true;
                     }
                     return true;
                 }
             }
-            /*
-            Выдача предметов
-             */
             else if(args[1].equalsIgnoreCase("util")){
                 if (args[2].equalsIgnoreCase("get")) {
-                    //Длина параметра проверки  [0]items [1]util [2]get [3]xxx [4](amount)
                     if (sender instanceof Player player){
-                        //Существует ли он в кэше?
-                        if (!ConfigReader.UTIL.containsKey(args[3])){
+                        if (!ConfigReader.UtilItem.containsKey(args[3])){
                             noItem(sender);
                             return true;
                         }
                         if (args.length == 4){
-                            ItemGive.givePlayerUtil(player, args[3], 1);
-                            AdventureManager.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", "1").replace("{Item}",args[3]));
+                            ItemUtil.givePlayerUtil(player, args[3], 1);
+                            AdventureUtil.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", "1").replace("{Item}",args[3]));
                         }else {
                             if (Integer.parseInt(args[4]) < 1){
                                 wrongAmount(sender);
                                 return true;
                             }
-                            ItemGive.givePlayerUtil(player, args[3], Integer.parseInt(args[4]));
-                            AdventureManager.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", args[4]).replace("{Item}",args[3]));
+                            ItemUtil.givePlayerUtil(player, args[3], Integer.parseInt(args[4]));
+                            AdventureUtil.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", args[4]).replace("{Item}",args[3]));
                         }
                     }else {
-                        AdventureManager.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.noConsole);
+                        AdventureUtil.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.noConsole);
                     }
                     return true;
                 }
                 if (args[2].equalsIgnoreCase("give")) {
-                    //Длина параметра проверки [0]items [1]util [2]give [3]player [4]xxx [5](amount)
                     if (args.length < 5){
                         lackArgs(sender);
                         return true;
                     }
                     Player player = Bukkit.getPlayer(args[3]);
-                    //Находится ли игрок в сети
                     if (player == null){
                         notOnline(sender);
                         return true;
                     }
-                    //Существует ли он в кэше?
-                    if (!ConfigReader.UTIL.containsKey(args[4])){
+                    if (!ConfigReader.UtilItem.containsKey(args[4])){
                         noItem(sender);
                         return true;
                     }
                     if (args.length == 5){
-                        ItemGive.givePlayerUtil(player, args[4], 1);
+                        ItemUtil.givePlayerUtil(player, args[4], 1);
                         giveItem(sender, args[3], args[4], 1);
                     }else {
                         if (Integer.parseInt(args[5]) < 1){
                             wrongAmount(sender);
                             return true;
                         }
-                        ItemGive.givePlayerUtil(player, args[4], Integer.parseInt(args[5]));
+                        ItemUtil.givePlayerUtil(player, args[4], Integer.parseInt(args[5]));
                         giveItem(sender, args[3], args[4], Integer.parseInt(args[5]));
                     }
                     return true;
@@ -199,55 +223,50 @@ public class Execute implements CommandExecutor {
             }
             else if (args[1].equalsIgnoreCase("rod")){
                 if (args[2].equalsIgnoreCase("get")) {
-                    //Продолжительность проверки параметров [0]items [1]rod [2]get [3]xxx [4](amount)
                     if (sender instanceof Player player){
-                        //Существует ли он в кэше?
-                        if (!ConfigReader.ROD.containsKey(args[3])){
+                        if (!ConfigReader.RodItem.containsKey(args[3])){
                             noItem(sender);
                             return true;
                         }
                         if (args.length == 4){
-                            ItemGive.givePlayerRod(player, args[3], 1);
-                            AdventureManager.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", "1").replace("{Item}",args[3]));
+                            ItemUtil.givePlayerRod(player, args[3], 1);
+                            AdventureUtil.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", "1").replace("{Item}",args[3]));
                         }else {
                             if (Integer.parseInt(args[4]) < 1){
                                 wrongAmount(sender);
                                 return true;
                             }
-                            ItemGive.givePlayerRod(player, args[3], Integer.parseInt(args[4]));
-                            AdventureManager.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", args[4]).replace("{Item}",args[3]));
+                            ItemUtil.givePlayerRod(player, args[3], Integer.parseInt(args[4]));
+                            AdventureUtil.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", args[4]).replace("{Item}",args[3]));
                         }
                     }else {
-                        AdventureManager.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.noConsole);
+                        AdventureUtil.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.noConsole);
                     }
                     return true;
                 }
                 if (args[2].equalsIgnoreCase("give")) {
-                    //Продолжительность проверки параметров[0]items [1]rod [2]give [3]player [4]xxx [5](amount)
                     if (args.length < 5){
                         lackArgs(sender);
                         return true;
                     }
                     Player player = Bukkit.getPlayer(args[3]);
-                    //Находится ли игрок в сети
                     if (player == null){
                         notOnline(sender);
                         return true;
                     }
-                    //Существует ли он в кэше?
-                    if (!ConfigReader.ROD.containsKey(args[4])){
+                    if (!ConfigReader.RodItem.containsKey(args[4])){
                         noItem(sender);
                         return true;
                     }
                     if (args.length == 5){
-                        ItemGive.givePlayerRod(player, args[4], 1);
+                        ItemUtil.givePlayerRod(player, args[4], 1);
                         giveItem(sender, args[3], args[4], 1);
                     }else {
                         if (Integer.parseInt(args[5]) < 1){
                             wrongAmount(sender);
                             return true;
                         }
-                        ItemGive.givePlayerRod(player, args[4], Integer.parseInt(args[5]));
+                        ItemUtil.givePlayerRod(player, args[4], Integer.parseInt(args[5]));
                         giveItem(sender, args[3], args[4], Integer.parseInt(args[5]));
                     }
                     return true;
@@ -255,55 +274,50 @@ public class Execute implements CommandExecutor {
             }
             else if (args[1].equalsIgnoreCase("bait")){
                 if (args[2].equalsIgnoreCase("get")) {
-                    //Продолжительность проверки параметров [0]items [1]bait [2]get [3]xxx [4](amount)
                     if (sender instanceof Player player){
-                        //Существует ли он в кэше?
-                        if (!ConfigReader.BAIT.containsKey(args[3])){
+                        if (!ConfigReader.BaitItem.containsKey(args[3])){
                             noItem(sender);
                             return true;
                         }
                         if (args.length == 4){
-                            ItemGive.givePlayerBait(player, args[3], 1);
-                            AdventureManager.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", "1").replace("{Item}",args[3]));
+                            ItemUtil.givePlayerBait(player, args[3], 1);
+                            AdventureUtil.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", "1").replace("{Item}",args[3]));
                         }else {
                             if (Integer.parseInt(args[4]) < 1){
                                 wrongAmount(sender);
                                 return true;
                             }
-                            ItemGive.givePlayerBait(player, args[3], Integer.parseInt(args[4]));
-                            AdventureManager.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", args[4]).replace("{Item}",args[3]));
+                            ItemUtil.givePlayerBait(player, args[3], Integer.parseInt(args[4]));
+                            AdventureUtil.playerMessage(player, ConfigReader.Message.prefix + ConfigReader.Message.getItem.replace("{Amount}", args[4]).replace("{Item}",args[3]));
                         }
                     }else {
-                        AdventureManager.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.noConsole);
+                        AdventureUtil.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.noConsole);
                     }
                     return true;
                 }
                 if (args[2].equalsIgnoreCase("give")) {
-                    //Продолжительность проверки параметров [0]items [1]bait [2]give [3]player [4]xxx [5](amount)
                     if (args.length < 5){
                         lackArgs(sender);
                         return true;
                     }
                     Player player = Bukkit.getPlayer(args[3]);
-                    //Находится ли игрок в сети
                     if (player == null){
                         notOnline(sender);
                         return true;
                     }
-                    //Существует ли он в кэше?
-                    if (!ConfigReader.BAIT.containsKey(args[4])){
+                    if (!ConfigReader.BaitItem.containsKey(args[4])){
                         noItem(sender);
                         return true;
                     }
                     if (args.length == 5){
-                        ItemGive.givePlayerBait(player, args[4], 1);
+                        ItemUtil.givePlayerBait(player, args[4], 1);
                         giveItem(sender, args[3], args[4], 1);
                     }else {
                         if (Integer.parseInt(args[5]) < 1){
                             wrongAmount(sender);
                             return true;
                         }
-                        ItemGive.givePlayerBait(player, args[4], Integer.parseInt(args[5]));
+                        ItemUtil.givePlayerBait(player, args[4], Integer.parseInt(args[5]));
                         giveItem(sender, args[3], args[4], Integer.parseInt(args[5]));
                     }
                     return true;
@@ -313,77 +327,76 @@ public class Execute implements CommandExecutor {
         return true;
     }
 
-
     private void lackArgs(CommandSender sender){
         if (sender instanceof Player){
-            AdventureManager.playerMessage((Player) sender,ConfigReader.Message.prefix + ConfigReader.Message.lackArgs);
+            AdventureUtil.playerMessage((Player) sender,ConfigReader.Message.prefix + ConfigReader.Message.lackArgs);
         }else {
-            AdventureManager.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.lackArgs);
+            AdventureUtil.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.lackArgs);
         }
     }
 
     private void notOnline(CommandSender sender){
         if (sender instanceof Player){
-            AdventureManager.playerMessage((Player) sender,ConfigReader.Message.prefix + ConfigReader.Message.notOnline);
+            AdventureUtil.playerMessage((Player) sender,ConfigReader.Message.prefix + ConfigReader.Message.notOnline);
         }else {
-            AdventureManager.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.notOnline);
+            AdventureUtil.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.notOnline);
         }
     }
 
     private void noItem(CommandSender sender){
         if (sender instanceof Player){
-            AdventureManager.playerMessage((Player) sender,ConfigReader.Message.prefix + ConfigReader.Message.notExist);
+            AdventureUtil.playerMessage((Player) sender,ConfigReader.Message.prefix + ConfigReader.Message.notExist);
         }else {
-            AdventureManager.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.notExist);
+            AdventureUtil.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.notExist);
         }
     }
 
     private void giveItem(CommandSender sender, String name, String item, int amount){
         String string = ConfigReader.Message.prefix + ConfigReader.Message.giveItem.replace("{Amount}", String.valueOf(amount)).replace("{Player}",name).replace("{Item}",item);
         if (sender instanceof Player){
-            AdventureManager.playerMessage((Player) sender, string);
+            AdventureUtil.playerMessage((Player) sender, string);
         }else {
-            AdventureManager.consoleMessage(string);
+            AdventureUtil.consoleMessage(string);
         }
     }
 
     private void wrongAmount(CommandSender sender){
         if (sender instanceof Player){
-            AdventureManager.playerMessage((Player) sender, ConfigReader.Message.prefix + ConfigReader.Message.wrongAmount);
+            AdventureUtil.playerMessage((Player) sender, ConfigReader.Message.prefix + ConfigReader.Message.wrongAmount);
         }else {
-            AdventureManager.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.wrongAmount);
+            AdventureUtil.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.wrongAmount);
         }
     }
 
     private void forceSuccess(CommandSender sender){
         if (sender instanceof Player){
-            AdventureManager.playerMessage((Player) sender, ConfigReader.Message.prefix + ConfigReader.Message.forceSuccess);
+            AdventureUtil.playerMessage((Player) sender, ConfigReader.Message.prefix + ConfigReader.Message.forceSuccess);
         }else {
-            AdventureManager.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.forceSuccess);
+            AdventureUtil.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.forceSuccess);
         }
     }
 
     private void forceFailure(CommandSender sender){
         if (sender instanceof Player){
-            AdventureManager.playerMessage((Player) sender, ConfigReader.Message.prefix + ConfigReader.Message.forceFailure);
+            AdventureUtil.playerMessage((Player) sender, ConfigReader.Message.prefix + ConfigReader.Message.forceFailure);
         }else {
-            AdventureManager.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.forceFailure);
+            AdventureUtil.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.forceFailure);
         }
     }
 
     private void forceEnd(CommandSender sender){
         if (sender instanceof Player){
-            AdventureManager.playerMessage((Player) sender, ConfigReader.Message.prefix + ConfigReader.Message.forceEnd);
+            AdventureUtil.playerMessage((Player) sender, ConfigReader.Message.prefix + ConfigReader.Message.forceEnd);
         }else {
-            AdventureManager.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.forceEnd);
+            AdventureUtil.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.forceEnd);
         }
     }
 
     private void forceCancel(CommandSender sender){
         if (sender instanceof Player){
-            AdventureManager.playerMessage((Player) sender, ConfigReader.Message.prefix + ConfigReader.Message.forceCancel);
+            AdventureUtil.playerMessage((Player) sender, ConfigReader.Message.prefix + ConfigReader.Message.forceCancel);
         }else {
-            AdventureManager.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.forceCancel);
+            AdventureUtil.consoleMessage(ConfigReader.Message.prefix + ConfigReader.Message.forceCancel);
         }
     }
 }

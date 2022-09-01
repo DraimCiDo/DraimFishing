@@ -1,6 +1,7 @@
+#MiniMessage Format
 #https://docs.adventure.kyori.net/minimessage/format.html
 messages:
-  prefix: '<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient>'
+  prefix: '<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient>'
   reload: 'Плагин был перезагружен.'
   no-perm: 'У вас нет прав!'
   not-online: 'Игрока нету на сервере!'
@@ -23,5 +24,7 @@ messages:
   force-competition-failure: 'Не удалось начать соревнование!'
   force-competition-end: 'Соревнование было завершено!'
   force-competition-cancel: 'Соревнование было отменено!'
+  hook-other-entity: 'The bobber is hooked on another entity!'
+  no-rod: 'You have to obtain a special rod to get loots!'
   no-player: 'Игроков не найдено'
   no-score: 'Никто не набрал очков'

@@ -11,11 +11,17 @@ softdepend:
   - AureliumSkills
   - MMOCore
   - EcoSkills
+  - EcoEnchants
   - RealisticSeasons
   - DraimFarming
+  - ItemsAdder
+  - Oraxen
+  - MMOItems
+  - Jobs
 commands:
   draimfishing:
     usage: /draimfishing
     description: Main command.
     permission: draimfishing.admin
-    aliases: dfishing
+    aliases:
+      - dfishing

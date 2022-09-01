@@ -2,7 +2,7 @@ package net.draimcido.draimfishing.competition.bossbar;
 
 import net.draimcido.draimfishing.ConfigReader;
 import net.draimcido.draimfishing.competition.CompetitionSchedule;
-import net.draimcido.draimfishing.utils.AdventureManager;
+import net.draimcido.draimfishing.utils.AdventureUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -24,7 +24,7 @@ public class BossBarManager implements Listener {
                 BossBarTimer timerTask = new BossBarTimer(player, CompetitionSchedule.competition.getBossBarConfig());
                 cache.put(player, timerTask);
             }else {
-                AdventureManager.playerMessage(player, ConfigReader.Message.competitionOn);
+                AdventureUtil.playerMessage(player, ConfigReader.Message.competitionOn);
             }
         }
     }

@@ -1,6 +1,7 @@
 package net.draimcido.draimfishing.titlebar;
 
 import net.draimcido.draimfishing.Main;
+import net.draimcido.draimfishing.object.Difficulty;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 

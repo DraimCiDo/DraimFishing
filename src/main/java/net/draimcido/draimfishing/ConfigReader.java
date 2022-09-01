@@ -1,27 +1,27 @@
 package net.draimcido.draimfishing;
 
-import net.draimcido.draimfishing.competition.reward.Reward;
-import net.draimcido.draimfishing.competition.reward.CommandImpl;
-import net.draimcido.draimfishing.competition.reward.MessageImpl;
-import net.draimcido.draimfishing.helper.Log;
-import net.draimcido.draimfishing.hook.skill.*;
-import net.draimcido.draimfishing.hook.Placeholders;
 import net.kyori.adventure.bossbar.BossBar;
+import net.draimcido.draimfarming.helper.Log;
 import net.draimcido.draimfishing.competition.CompetitionConfig;
 import net.draimcido.draimfishing.competition.Goal;
 import net.draimcido.draimfishing.competition.bossbar.BossBarConfig;
-import net.draimcido.draimfishing.item.Bait;
-import net.draimcido.draimfishing.item.Loot;
-import net.draimcido.draimfishing.item.Rod;
-import net.draimcido.draimfishing.item.Util;
+import net.draimcido.draimfishing.hook.EcoItemRegister;
+import net.draimcido.draimfishing.hook.season.DraimFarmingSeason;
+import net.draimcido.draimfishing.hook.season.RealisticSeason;
+import net.draimcido.draimfishing.hook.season.SeasonInterface;
+import net.draimcido.draimfishing.hook.skill.*;
+import net.draimcido.draimfishing.object.*;
+import net.draimcido.draimfishing.object.action.*;
+import net.draimcido.draimfishing.object.loot.DroppedItem;
+import net.draimcido.draimfishing.object.loot.Loot;
+import net.draimcido.draimfishing.object.loot.Mob;
 import net.draimcido.draimfishing.requirements.*;
-import net.draimcido.draimfishing.titlebar.Difficulty;
-import net.draimcido.draimfishing.titlebar.Layout;
 import net.draimcido.draimfishing.utils.*;
 import org.apache.commons.lang.StringUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.configuration.MemorySection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.inventory.ItemFlag;
@@ -33,16 +33,18 @@ import java.util.*;
 public class ConfigReader{
 
     public static HashMap<String, Loot> LOOT = new HashMap<>();
-    public static HashMap<String, ItemStack> LOOTITEM = new HashMap<>();
-    public static HashMap<String, Util> UTIL = new HashMap<>();
-    public static HashMap<String, ItemStack> UTILITEM = new HashMap<>();
-    public static HashMap<String, Rod> ROD = new HashMap<>();
-    public static HashMap<String, ItemStack> RODITEM = new HashMap<>();
-    public static HashMap<String, Bait> BAIT = new HashMap<>();
-    public static HashMap<String, ItemStack> BAITITEM = new HashMap<>();
+    public static HashMap<String, ItemStack> LootItem = new HashMap<>();
+    public static HashMap<String, ItemStack> UtilItem = new HashMap<>();
+    public static HashMap<String, Bonus> ROD = new HashMap<>();
+    public static HashMap<String, ItemStack> RodItem = new HashMap<>();
+    public static HashMap<String, Bonus> BAIT = new HashMap<>();
+    public static HashMap<String, ItemStack> BaitItem = new HashMap<>();
     public static HashMap<String, Layout> LAYOUT = new HashMap<>();
-    public static HashMap<String, CompetitionConfig> Competitions = new HashMap<>();
-    public static HashMap<String, CompetitionConfig> CompetitionsCommand = new HashMap<>();
+    public static HashMap<String, String> OTHERS = new HashMap<>();
+    public static HashMap<String, HashMap<Integer, Bonus>> ENCHANTS = new HashMap<>();
+    public static HashMap<String, CompetitionConfig> CompetitionsT = new HashMap<>();
+    public static HashMap<String, CompetitionConfig> CompetitionsC = new HashMap<>();
+    public static boolean useRedis;
 
     public static YamlConfiguration getConfig(String configName) {
         File file = new File(Main.instance.getDataFolder(), configName);
@@ -61,7 +63,11 @@ public class ConfigReader{
         loadUtil();
         loadRod();
         loadBait();
+        loadEnchants();
         loadCompetitions();
+        if (Bukkit.getPluginManager().isPluginEnabled("eco")) {
+            EcoItemRegister.registerItems();
+        }
     }
 
     public static class Config {
@@ -69,133 +75,154 @@ public class ConfigReader{
         public static boolean wg;
         public static boolean mm;
         public static boolean papi;
-        public static boolean season;
-        public static boolean vanillaDrop;
         public static boolean needOpenWater;
         public static boolean needSpecialRod;
         public static boolean competition;
         public static boolean convertMMOItems;
         public static boolean loseDurability;
-        public static boolean rsSeason;
-        public static boolean dfSeason;
-        public static String season_papi;
-        public static String lang;
+        public static boolean preventPick;
+        public static boolean doubleRealIn;
+        public static boolean vanillaLoot;
+        public static boolean showBar;
+        public static boolean mcMMOLoot;
+        public static boolean hasWhitelist;
+        public static boolean needRodFishing;
+        public static boolean disableJobXp;
         public static int fishFinderCoolDown;
         public static double timeMultiply;
+        public static double vanillaRatio;
+        public static double mcMMOLootChance;
         public static SkillXP skillXP;
         public static String version;
+        public static String lang;
+        public static String priority;
+        public static List<org.bukkit.World> whitelistWorlds = new ArrayList<>();
+        public static SeasonInterface season;
 
         public static void loadConfig() {
-
 
             Main.instance.saveDefaultConfig();
             Main.instance.reloadConfig();
             FileConfiguration config = Main.instance.getConfig();
 
-            wg = config.getBoolean("config.integrations.WorldGuard");
-            if (wg){
-                if (Bukkit.getPluginManager().getPlugin("WorldGuard") == null){
-                    AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><gradient:#D38312:#A83279>Не удалось инициализировать WorldGuard!</gradient>");
-                    wg = false;
-                }else {
-                    AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><color:#00BFFF>WorldGuard <color:#E1FFFF>подвязался!");
+            wg = (mm = (papi = false));
+            if (config.getBoolean("config.integrations.WorldGuard")){
+                if (Bukkit.getPluginManager().getPlugin("WorldGuard") == null) AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><red>Failed to initialize WorldGuard!</red>");
+                else {
+                    AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><color:#00BFFF>WorldGuard <color:#E1FFFF>Hooked!");
+                    wg = true;
                 }
             }
-            mm = config.getBoolean("config.integrations.MythicMobs");
-            if (mm){
-                if (Bukkit.getPluginManager().getPlugin("MythicMobs") == null){
-                    AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><gradient:#D38312:#A83279>Не удалось инициализировать MythicMobs!</gradient>");
-                    mm = false;
-                }else {
-                    AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><color:#00BFFF>MythicMobs <color:#E1FFFF>подвязался!");
+            if (config.getBoolean("config.integrations.MythicMobs")){
+                if (Bukkit.getPluginManager().getPlugin("MythicMobs") == null) AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><red>Failed to initialize MythicMobs!</red>");
+                else {
+                    AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><color:#00BFFF>MythicMobs <color:#E1FFFF>Hooked!");
+                    mm = true;
                 }
             }
-            papi = config.getBoolean("config.integrations.PlaceholderAPI");
-            if (papi){
-                if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") == null){
-                    AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><gradient:#D38312:#A83279>Не удалось инициализировать PlaceholderAPI!</gradient>");
-                    papi = false;
-                }
+            if (config.getBoolean("config.integrations.PlaceholderAPI")){
+                if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") == null) AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><red>Failed to initialize PlaceholderAPI!</red>");
+                else papi = true;
             }
-            skillXP = null;
 
+            skillXP = null;
             if(config.getBoolean("config.integrations.mcMMO",false)){
-                if(Bukkit.getPluginManager().getPlugin("mcMMO") == null){
-                    Main.instance.getLogger().warning("Failed to initialize mcMMO!");
-                }else {
+                if (Bukkit.getPluginManager().getPlugin("mcMMO") == null) Main.instance.getLogger().warning("Failed to initialize mcMMO!");
+                else {
                     skillXP = new mcMMO();
-                    AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><color:#00BFFF>mcMMO <color:#E1FFFF>подвязался!");
+                    AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><color:#00BFFF>mcMMO <color:#E1FFFF>Hooked!");
                 }
             }
             if(config.getBoolean("config.integrations.AureliumSkills",false)){
-                if(Bukkit.getPluginManager().getPlugin("AureliumSkills") == null){
-                    Main.instance.getLogger().warning("Failed to initialize AureliumSkills!");
-                }else {
+                if (Bukkit.getPluginManager().getPlugin("AureliumSkills") == null) Main.instance.getLogger().warning("Failed to initialize AureliumSkills!");
+                else {
                     skillXP = new Aurelium();
-                    AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><color:#00BFFF>AureliumSkills <color:#E1FFFF>подвязался!");
+                    AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><color:#00BFFF>AureliumSkills <color:#E1FFFF>Hooked!");
                 }
             }
             if(config.getBoolean("config.integrations.MMOCore",false)){
-                if(Bukkit.getPluginManager().getPlugin("MMOCore") == null){
-                    Main.instance.getLogger().warning("Failed to initialize MMOCore!");
-                }else {
+                if (Bukkit.getPluginManager().getPlugin("MMOCore") == null) Main.instance.getLogger().warning("Failed to initialize MMOCore!");
+                else {
                     skillXP = new MMOCore();
-                    AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><color:#00BFFF>MMOCore <color:#E1FFFF>подвязался!");
+                    AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><color:#00BFFF>MMOCore <color:#E1FFFF>Hooked!");
                 }
             }
-            if(config.getBoolean("config.integrations.EcoSkills",false)) {
-                if (Bukkit.getPluginManager().getPlugin("EcoSkills") == null) {
-                    Main.instance.getLogger().warning("Failed to initialize EcoSkills!");
-                } else {
+            if(config.getBoolean("config.integrations.EcoSkills",false)){
+                if (Bukkit.getPluginManager().getPlugin("EcoSkills") == null) Main.instance.getLogger().warning("Failed to initialize EcoSkills!");
+                else {
                     skillXP = new EcoSkill();
-                    AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><color:#00BFFF>EcoSkills <color:#E1FFFF>подвязался!");
+                    AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><color:#00BFFF>EcoSkills <color:#E1FFFF>Hooked!");
+                }
+            }
+            if(config.getBoolean("config.integrations.JobsReborn",false)){
+                if (Bukkit.getPluginManager().getPlugin("Jobs") == null) Main.instance.getLogger().warning("Failed to initialize JobsReborn!");
+                else {
+                    skillXP = new JobsReborn();
+                    AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><color:#00BFFF>JobsReborn <color:#E1FFFF>Hooked!");
                 }
             }
 
-
-            season = config.getBoolean("config.season.enable");
-            if (!papi && season) {
-                season = false;
-            } else {
-                season_papi = config.getString("config.season.papi");
-            }
-
-            rsSeason = false;
+            season = null;
             if (config.getBoolean("config.integrations.RealisticSeasons",false)){
-                if (Bukkit.getPluginManager().getPlugin("RealisticSeasons") == null) Log.warn("Не удалось инизилизировать RealisticSeasons!");
+                if (Bukkit.getPluginManager().getPlugin("RealisticSeasons") == null) Log.warn("Failed to initialize RealisticSeasons!");
                 else {
-                    rsSeason = true;
-                    AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><color:#00BFFF>RealisticSeasons <color:#E1FFFF>подвязался!");
+                    season = new RealisticSeason();
+                    AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><color:#00BFFF>RealisticSeasons <color:#E1FFFF>Hooked!");
                 }
             }
-            dfSeason = false;
-            if (config.getBoolean("config.integrations.DraimFarming",false)){
-                if (Bukkit.getPluginManager().getPlugin("DraimFarming") == null) Log.warn("Не удалось инизилизировать DraimFarming!");
+            if (config.getBoolean("config.integrations.CustomCrops",false)){
+                if (Bukkit.getPluginManager().getPlugin("CustomCrops") == null) Log.warn("Failed to initialize CustomCrops!");
                 else {
-                    dfSeason = true;
-                    AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><color:#00BFFF>DraimFarming <color:#E1FFFF>подвязался!");
+                    season = new DraimFarmingSeason();
+                    AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><color:#00BFFF>CustomCrops <color:#E1FFFF>Hooked!");
                 }
             }
 
-            if (rsSeason || dfSeason){
-                season = true;
-            }
+            version = config.getString("config-version");
 
-            vanillaDrop = config.getBoolean("config.vanilla-loot-when-no-custom-fish", true);
+            doubleRealIn = config.getBoolean("config.double-reel-in", true);
+
+            mcMMOLoot = config.getBoolean("config.other-loot.mcMMO", false);
+            mcMMOLootChance = config.getDouble("config.other-loot.mcMMO-chance", 0.5);
+
+            vanillaLoot = config.getBoolean("config.other-loot.vanilla", true);
+            showBar = config.getBoolean("config.other-loot.bar", true);
+            vanillaRatio = config.getDouble("config.other-loot.vanilla-ratio");
+
             convertMMOItems = config.getBoolean("config.convert-MMOITEMS", false);
             needOpenWater = config.getBoolean("config.need-open-water", false);
-            needSpecialRod = config.getBoolean("config.need-special-rod", false);
+            needSpecialRod = config.getBoolean("config.need-special-rod.for-loots", false);
+            needRodFishing = config.getBoolean("config.need-special-rod.to-fish", false);
+
             loseDurability = config.getBoolean("config.rod-lose-durability", true);
-            version = config.getString("config-version");
+            preventPick = config.getBoolean("config.prevent-other-players-pick-up-loot", false);
+
+            priority = config.getString("config.event-priority");
             fishFinderCoolDown = config.getInt("config.fishfinder-cooldown");
             timeMultiply = config.getDouble("config.time-multiply");
-            lang = config.getString("config.lang","ru");
+            lang = config.getString("config.lang","cn");
             competition = config.getBoolean("config.fishing-competition",true);
+            disableJobXp = config.getBoolean("config.disable-JobsReborn-fishing-exp",false);
 
+            hasWhitelist = config.getBoolean("config.whitelist-worlds.enable",false);
+
+            if (hasWhitelist){
+                whitelistWorlds.clear();
+                config.getStringList("config.whitelist-worlds.worlds").forEach(whitelistWorld -> {
+                    try {
+                        whitelistWorlds.add(Bukkit.getWorld(whitelistWorld));
+                    }
+                    catch (Exception e){
+                        AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><red>Invalid world " + whitelistWorld);
+                        e.printStackTrace();
+                    }
+                });
+            }
         }
     }
 
     public static class Message {
+
         public static String prefix;
         public static String reload;
         public static String escape;
@@ -221,14 +248,19 @@ public class ConfigReader{
         public static String forceCancel;
         public static String noPlayer;
         public static String noScore;
+        public static String noRod;
+        public static String hookOther;
+
         public static void loadMessage() {
+
             YamlConfiguration config = getConfig("messages/messages_" + Config.lang +".yml");
-            prefix = config.getString("messages.prefix");
-            reload = config.getString("messages.reload");
-            escape = config.getString("messages.escape");
-            noPerm = config.getString("messages.no-perm");
-            notExist = config.getString("messages.not-exist");
-            noConsole = config.getString("messages.no-console");
+
+            prefix = config.getString("messages.prefix", "messages.prefix is missing");
+            reload = config.getString("messages.reload", "messages.reload is missing");
+            escape = config.getString("messages.escape", "messages.escape is missing");
+            noPerm = config.getString("messages.no-perm", "messages.no-perm is missing");
+            notExist = config.getString("messages.not-exist", "messages.not-exist is missing");
+            noConsole = config.getString("messages.no-console", "messages.no-console is missing");
             wrongAmount = config.getString("messages.wrong-amount");
             lackArgs = config.getString("messages.lack-args");
             notOnline = config.getString("messages.not-online");
@@ -245,25 +277,31 @@ public class ConfigReader{
             forceSuccess = config.getString("messages.force-competition-success");
             forceFailure = config.getString("messages.force-competition-failure");
             forceEnd = config.getString("messages.force-competition-end");
-            forceCancel = config.getString("messages.force-competition-cancel");
-            noPlayer = config.getString("messages.no-player");
-            noScore = config.getString("messages.no-score");
+            forceCancel = config.getString("messages.force-competition-cancel","messages.force-competition-cancel is messing");
+            noPlayer = config.getString("messages.no-player", "messages.no-player is missing");
+            noScore = config.getString("messages.no-score", "messages.no-score is missing");
+            noRod = config.getString("messages.no-rod", "messages.no-rod is missing");
+            hookOther = config.getString("messages.hook-other-entity","messages.hook-other-entity is missing");
         }
     }
 
     public static class Title {
+
         public static List<String> success_title;
         public static List<String> success_subtitle;
+        public static List<String> failure_title;
+        public static List<String> failure_subtitle;
         public static int success_in;
         public static int success_out;
         public static int success_stay;
-        public static List<String> failure_title;
-        public static List<String> failure_subtitle;
         public static int failure_in;
         public static int failure_out;
         public static int failure_stay;
+
         public static void loadTitle() {
+
             YamlConfiguration config = getConfig("titles.yml");
+
             success_title = config.getStringList("titles.success.title");
             success_subtitle = config.getStringList("titles.success.subtitle");
             success_in = config.getInt("titles.success.fade.in")*50;
@@ -280,557 +318,677 @@ public class ConfigReader{
     public static void loadLoot() {
 
         LOOT.clear();
-        LOOTITEM.clear();
+        LootItem.clear();
+        OTHERS.clear();
+        CustomPapi.allPapi.clear();
 
-        YamlConfiguration config = getConfig("loots.yml");
-        Set<String> keys = Objects.requireNonNull(config.getConfigurationSection("items")).getKeys(false);
-        keys.forEach(key -> {
+        File loot_file = new File(Main.instance.getDataFolder() + File.separator + "loots");
 
-            Difficulty difficulty;
-            if (config.contains("items." + key + ".difficulty")) {
-                String[] split = StringUtils.split(config.getString("items." + key + ".difficulty"), "-");
-                assert split != null;
-                if (Integer.parseInt(split[1]) <= 0 || Integer.parseInt(split[0]) <= 0){
-                    AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><gradient:#D38312:#A83279> Ошибка! " + key + " имеет неправильный формат сложности!</gradient");
-                    return;
-                }else {
-                    difficulty = new Difficulty(Integer.parseInt(split[0]), Integer.parseInt(split[1]));
-                }
-            } else {
-                difficulty = new Difficulty(1, 1);
-            }
-            int weight;
-            if (config.contains("items." + key + ".weight")) {
-                weight = config.getInt("items." + key + ".weight");
-            } else {
-                AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><gradient:#D38312:#A83279> Ошибка! Не правильное заничение weight " + key + " !</gradient>");
+        if (!loot_file.exists()) {
+            if (!loot_file.mkdir()) {
+                AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><red>Error! Failed to create loots folder...</red>");
                 return;
             }
-            int time;
-            if (config.contains("items." + key + ".time")) {
-                time = config.getInt("items." + key + ".time");
-                if (time <= 0){
-                    AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><gradient:#D38312:#A83279> Ошибка! " + key + " параметр time должен быть положительным!</gradient>");
-                    return;
-                }
-            } else {
-                time = 10000;
-            }
-
-            Loot loot = new Loot(key, difficulty, weight, time);
-
-            if (config.contains("items." + key + ".material")) {
-                loot.setMaterial(config.getString("items." + key + ".material"));
-            } else {
-                AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><gradient:#D38312:#A83279> Ошибка! Нету предметов для" + key + " !</gradient>");
-                return;
-            }
-            if (config.contains("items." + key + ".display.lore"))
-                loot.setLore(config.getStringList("items." + key + ".display.lore"));
-            if (config.contains("items." + key + ".display.name"))
-                loot.setName(config.getString("items." + key + ".display.name"));
-            if (config.contains("items." + key + ".enchantments")) {
-                ArrayList<Enchantment> arrayList = new ArrayList<>();
-                config.getStringList("items." + key + ".enchantments").forEach(enchant -> {
-                    String[] split = StringUtils.split(enchant, "/");
-                    NamespacedKey namespacedKey = NamespacedKey.fromString(split[0]);
-                    arrayList.add(new Enchantment(namespacedKey, Integer.parseInt(split[1])));
-                });
-                loot.setEnchantment(arrayList);
-            }
-            if (config.contains("items." + key + ".item_flags")) {
-                ArrayList<ItemFlag> arrayList = new ArrayList<>();
-                config.getStringList("items." + key + ".item_flags").forEach(flag -> {
-                    arrayList.add(ItemFlag.valueOf(flag));
-                });
-                loot.setItemFlags(arrayList);
-            }
-            if (config.contains("items." + key + ".nbt"))
-                loot.setNbt((Map<String, Object>) config.getMapList("items." + key + ".nbt").get(0));
-            if (config.contains("items." + key + ".custom-model-data"))
-                loot.setCustommodeldata(config.getInt("items." + key + ".custom-model-data"));
-            if (config.contains("items."+ key +".nick")){
-                loot.setNick(config.getString("items."+key+".nick"));
-            }else {
-                loot.setNick(loot.getName());
-            }
-            loot.setUnbreakable(config.getBoolean("items." + key + ".unbreakable",false));
-            loot.setScore((float) config.getDouble("items." + key + ".score"));
-
-            if (config.contains("items." + key + ".action.message"))
-                loot.setMsg(config.getStringList("items." + key + ".action.message"));
-            if (config.contains("items." + key + ".action.command"))
-                loot.setCommands(config.getStringList("items." + key + ".action.command"));
-            if (config.contains("items." + key + ".action-hook.message"))
-                loot.setHookMsg(config.getStringList("items." + key + ".action-hook.message"));
-            if (config.contains("items." + key + ".action-hook.command"))
-                loot.setHookCommands(config.getStringList("items." + key + ".action-hook.command"));
-            if (config.contains("items." + key + ".action.exp"))
-                loot.setExp(config.getInt("items." + key + ".action.exp"));
-            if (config.contains("items." + key + ".layout"))
-                loot.setLayout(config.getString("items." + key + ".layout"));
-            if (config.contains("items." + key + ".skill-xp"))
-                loot.setSkillXP(config.getDouble("items." + key + ".skill-xp"));
-            if (config.contains("items." + key + ".group"))
-                loot.setGroup(config.getString("items." + key + ".group"));
-            if (config.contains("items." + key + ".show-in-fishfinder")){
-                loot.setShowInFinder(config.getBoolean("items." + key + ".show-in-fishfinder"));
-            }else {
-                loot.setShowInFinder(true);
-            }
-            if (config.contains("items." + key + ".requirements")){
-                List<Requirement> requirements = new ArrayList<>();
-                Objects.requireNonNull(config.getConfigurationSection("items." + key + ".requirements")).getKeys(false).forEach(requirement -> {
-                    switch (requirement){
-                        case "weather" -> requirements.add(new Weather(config.getStringList("items." + key + ".requirements.weather")));
-                        case "ypos" -> requirements.add(new YPos(config.getStringList("items." + key + ".requirements.ypos")));
-                        case "season" -> {
-                            if (Config.season){
-                                requirements.add(new Season(config.getStringList("items." + key + ".requirements.season")));
-                            }else {
-                                AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><gradient:#D38312:#A83279> Пожалуйста активируй seasons в config.yml!</gradient>");
-                            }
-                        }
-                        case "world" -> requirements.add(new World(config.getStringList("items." + key + ".requirements.world")));
-                        case "biome" -> requirements.add(new Biome(config.getStringList("items." + key + ".requirements.biome")));
-                        case "permission" -> requirements.add(new Permission(config.getString("items." + key + ".requirements.permission")));
-                        case "region" -> {
-                            if (Config.wg){
-                                requirements.add(new Region(config.getStringList("items." + key + ".requirements.regions")));
-                            }else {
-                                AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><gradient:#D38312:#A83279> Пожалуйста активируйте интеграцию WorldGuard!</gradient>");
-                            }
-                        }
-                        case "time" -> requirements.add(new Time(config.getStringList("items." + key + ".requirements.time")));
-                    }
-                });
-                loot.setRequirements(requirements);
-            }
-            LOOT.put(key, loot);
-            if (loot.getMaterial().equalsIgnoreCase("AIR")) {
-                LOOTITEM.put(key, new ItemStack(Material.AIR));
-            } else {
-                LOOTITEM.put(key, ItemStackGenerator.fromItem(loot));
-            }
-        });
-
-        if (config.contains("mobs") && Config.mm){
-            Set<String> mobs = Objects.requireNonNull(config.getConfigurationSection("mobs")).getKeys(false);
-            mobs.forEach(key -> {
-
-                String name;
-                if (config.contains("mobs." + key + ".name")) {
-                    name = config.getString("mobs." + key + ".name");
-                } else {
-                    AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><gradient:#D38312:#A83279> Ошибка! Имя моба не усатновлено " + key + " !</gradient>");
-                    return;
-                }
-                Difficulty difficulty;
-                if (config.contains("mobs." + key + ".difficulty")) {
-                    String[] split = StringUtils.split(config.getString("mobs." + key + ".difficulty"), "-");
-                    assert split != null;
-                    if (Integer.parseInt(split[1]) <= 0 || Integer.parseInt(split[0]) <= 0){
-                        AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><gradient:#D38312:#A83279> Ошибка! " + key + " имеет неправильный формат сложности! </gradient>");
-                        return;
-                    }else {
-                        difficulty = new Difficulty(Integer.parseInt(split[0]), Integer.parseInt(split[1]));
-                    }
-                } else {
-                    difficulty = new Difficulty(1, 1);
-                }
-                int weight;
-                if (config.contains("mobs." + key + ".weight")) {
-                    weight = config.getInt("mobs." + key + ".weight");
-                } else {
-                    AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><gradient:#D38312:#A83279> Ошибка! Не установлен параметр weight для " + key + " !</gradient>");
-                    return;
-                }
-                int time;
-                if (config.contains("mobs." + key + ".time")) {
-                    time = config.getInt("mobs." + key + ".time");
-                    if (time <= 0){
-                        AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><gradient:#D38312:#A83279> Ошибка! " + key + " параметр времени должен быть положительным!</gradient>");
-                        return;
-                    }
-                } else {
-                    time = 10000;
-                }
-                Loot loot = new Loot(key, difficulty, weight, time);
-                loot.setNick(name);
-                if (config.contains("mobs." + key + ".mythicmobsID")) {
-                    loot.setMm(config.getString("mobs." + key + ".mythicmobsID"));
-                } else {
-                    AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><gradient:#D38312:#A83279> Ошибка! Не установлен MythicMobs ид для " + key + " !</gradient>");
-                    return;
-                }
-                if (config.contains("mobs." + key + ".vector.horizontal") && config.contains("mobs." + key + ".vector.vertical")) {
-                    loot.setVectorUtil(new VectorUtil(config.getDouble("mobs." + key + ".vector.horizontal"), config.getDouble("mobs." + key + ".vector.vertical")));
-                } else {
-                    loot.setVectorUtil(new VectorUtil(1.1, 1.3));
-                }
-
-                if (config.contains("mobs." + key + ".level"))
-                    loot.setMmLevel(config.getInt("mobs." + key + ".level", 0));
-                if (config.contains("mobs." + key + ".action.message"))
-                    loot.setMsg(config.getStringList("mobs." + key + ".action.message"));
-                if (config.contains("mobs." + key + ".action.command"))
-                    loot.setCommands(config.getStringList("mobs." + key + ".action.command"));
-                if (config.contains("mobs." + key + ".action-hook.message"))
-                    loot.setHookMsg(config.getStringList("mobs." + key + ".action-hook.message"));
-                if (config.contains("mobs." + key + ".action-hook.command"))
-                    loot.setHookCommands(config.getStringList("mobs." + key + ".action-hook.command"));
-                if (config.contains("mobs." + key + ".action.exp"))
-                    loot.setExp(config.getInt("mobs." + key + ".action.exp"));
-                if (config.contains("mobs." + key + ".skill-xp"))
-                    loot.setSkillXP(config.getDouble("mobs." + key + ".skill-xp"));
-                if (config.contains("mobs." + key + ".layout"))
-                    loot.setLayout(config.getString("mobs." + key + "layout"));
-                if (config.contains("mobs." + key + ".group"))
-                    loot.setGroup(config.getString("mobs." + key + ".group"));
-                if (config.contains("mobs." + key + ".show-in-fishfinder")){
-                    loot.setShowInFinder(config.getBoolean("mobs." + key + ".show-in-fishfinder"));
-                }else {
-                    loot.setShowInFinder(true);
-                }
-                loot.setScore((float) config.getDouble("mobs." + key + ".score"));
-                if (config.contains("mobs." + key + ".requirements")){
-                    List<Requirement> requirements = new ArrayList<>();
-                    Objects.requireNonNull(config.getConfigurationSection("mobs." + key + ".requirements")).getKeys(false).forEach(requirement -> {
-                        switch (requirement){
-                            case "weather" -> requirements.add(new Weather(config.getStringList("mobs." + key + ".requirements.weather")));
-                            case "ypos" -> requirements.add(new YPos(config.getStringList("mobs." + key + ".requirements.ypos")));
-                            case "season" -> {
-                                if (Config.season){
-                                    requirements.add(new Season(config.getStringList("mobs." + key + ".requirements.season")));
-                                }else {
-                                    AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><gradient:#D38312:#A83279> Пожалуйста включите параметр season в config.yml!</gradient>");
-                                }
-                            }
-                            case "world" -> requirements.add(new World(config.getStringList("mobs." + key + ".requirements.world")));
-                            case "biome" -> requirements.add(new Biome(config.getStringList("mobs." + key + ".requirements.biome")));
-                            case "permission" -> requirements.add(new Permission(config.getString("mobs." + key + ".requirements.permission")));
-                            case "region" -> {
-                                if (Config.wg){
-                                    requirements.add(new Region(config.getStringList("mobs." + key + ".requirements.regions")));
-                                }else {
-                                    AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><gradient:#D38312:#A83279> Пожалуйста включите интеграцию WorldGuard!</gradient>");
-                                }
-                            }
-                            case "time" -> requirements.add(new Time(config.getStringList("mobs." + key + ".requirements.time")));
-                        }
-                    });
-                    loot.setRequirements(requirements);
-                }
-                LOOT.put(key, loot);
-            });
-            if (keys.size() != LOOTITEM.size() || mobs.size() != LOOT.size()- LOOTITEM.size()) {
-                AdventureManager.consoleMessage("<red>[DraimFishing] loots.yml exists error!</red>");
-            } else {
-                AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><white>" + keys.size() + " <color:#E1FFFF>лута было загружено!");
-                AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><white>" + mobs.size() + " <color:#E1FFFF>мобов было загружено!");
-            }
-            return;
+            Main.instance.saveResource("loots" + File.separator + "default.yml", false);
+            Main.instance.saveResource("loots" + File.separator + "example.yml", false);
         }
-        if (keys.size() != LOOTITEM.size()){
-            AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><gradient:#D38312:#A83279> Ошибка! loots.yml не найден!</gradient>");
-        } else {
-            AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><white>" + keys.size() + " <color:#E1FFFF>лута было загружено!");
+
+        File[] files = loot_file.listFiles();
+
+        if (files != null) {
+
+            for (File file : files) {
+
+                YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
+                Set<String> keys = config.getKeys(false);
+
+                keys.forEach(key -> {
+
+                    if (!config.getBoolean(key + ".enable", true)) return;
+
+                    DroppedItem loot = new DroppedItem(key);
+
+                    String[] diff = StringUtils.split(config.getString(key + ".difficulty", "1-1"),"-");
+                    Difficulty difficulty = new Difficulty(Integer.parseInt(diff[0]), Integer.parseInt(diff[1]));
+
+                    int weight = config.getInt(key + ".weight",10);
+                    int time = config.getInt(key + ".time",10000);
+
+                    loot.setDifficulty(difficulty);
+                    loot.setTime(time);
+                    loot.setWeight(weight);
+                    if (config.contains(key + ".nick")) loot.setNick(config.getString(key + ".nick"));
+                    else loot.setNick(config.getString(key + ".display.name", key));
+                    loot.setScore(config.getDouble(key + ".score",0));
+                    loot.setShowInFinder(config.getBoolean(key + ".show-in-fishfinder", true));
+                    loot.setRandomDurability(config.getBoolean(key + ".random-durability", false));
+
+                    if (config.contains(key + ".group"))
+                        loot.setGroup(config.getString(key + ".group"));
+                    if (config.contains(key + ".layout"))
+                        loot.setLayout(config.getStringList(key + ".layout"));
+                    if (config.contains(key + ".random-enchantments")){
+                        List<LeveledEnchantment> randomEnchants = new ArrayList<>();
+                        config.getConfigurationSection(key + ".random-enchantments").getValues(false).forEach((order, enchant) -> {
+                            if (enchant instanceof MemorySection memorySection){
+                                LeveledEnchantment enchantment = new LeveledEnchantment(NamespacedKey.fromString(memorySection.getString("enchant")), memorySection.getInt("level"));
+                                enchantment.setChance(memorySection.getDouble("chance"));
+                                randomEnchants.add(enchantment);
+                            }
+                        });
+                        loot.setRandomEnchants(randomEnchants);
+                    }
+
+                    List<ActionB> successActions = new ArrayList<>();
+                    if (config.contains(key + ".action.success.message"))
+                        successActions.add(new MessageA(config.getStringList(key + ".action.success.message"), loot.getNick()));
+                    if (config.contains(key + ".action.success.command"))
+                        successActions.add(new CommandA(config.getStringList(key + ".action.success.command"), loot.getNick()));
+                    if (config.contains(key + ".action.success.exp"))
+                        successActions.add(new XPB(config.getInt(key + ".action.success.exp")));
+                    if (config.contains(key + ".action.success.mending"))
+                        successActions.add(new XPA(config.getInt(key + ".action.success.mending")));
+                    if (config.contains(key + ".action.success.skill-xp"))
+                        successActions.add(new FishingXPB(config.getInt(key + ".action.success.skill-xp")));
+                    loot.setSuccessActions(successActions);
+
+                    List<ActionB> failureActions = new ArrayList<>();
+                    if (config.contains(key + ".action.failure.message"))
+                        failureActions.add(new MessageA(config.getStringList(key + ".action.failure.message"), loot.getNick()));
+                    if (config.contains( key + ".action.failure.command"))
+                        failureActions.add(new CommandA(config.getStringList(key + ".action.failure.command"), loot.getNick()));
+                    if (config.contains( key + ".action.failure.exp"))
+                        failureActions.add(new XPB(config.getInt( key + ".action.failure.exp")));
+                    if (config.contains(key + ".action.failure.mending"))
+                        failureActions.add(new XPA(config.getInt(key + ".action.failure.mending")));
+                    if (config.contains( key + ".action.failure.skill-xp"))
+                        failureActions.add(new FishingXPB(config.getInt( key + ".action.failure.skill-xp")));
+                    loot.setFailureActions(failureActions);
+
+                    List<ActionB> hookActions = new ArrayList<>();
+                    if (config.contains(key + ".action.hook.message"))
+                        hookActions.add(new MessageA(config.getStringList(key + ".action.hook.message"), loot.getNick()));
+                    if (config.contains(key + ".action.hook.command"))
+                        hookActions.add(new CommandA(config.getStringList(key + ".action.hook.command"), loot.getNick()));
+                    if (config.contains(key + ".action.hook.exp"))
+                        successActions.add(new XPB(config.getInt(key + ".action.hook.exp")));
+                    if (config.contains(key + ".action.hook.mending"))
+                        successActions.add(new XPA(config.getInt(key + ".action.hook.mending")));
+                    if (config.contains(key + ".action.hook.skill-xp"))
+                        successActions.add(new FishingXPB(config.getInt(key + ".action.hook.skill-xp")));
+                    loot.setHookActions(hookActions);
+
+                    if (config.contains(key + ".requirements")){
+                        List<Requirement> requirements = new ArrayList<>();
+                        config.getConfigurationSection(key + ".requirements").getKeys(false).forEach(requirement -> {
+                            switch (requirement){
+                                case "weather" -> requirements.add(new Weather(config.getStringList(key + ".requirements.weather")));
+                                case "ypos" -> requirements.add(new YPos(config.getStringList(key + ".requirements.ypos")));
+                                case "season" -> {
+                                    if (Config.season != null) requirements.add(new Season(config.getStringList(key + ".requirements.season")));
+                                    else AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><red>You need to enable season hook in config.yml to use season condition!</red>");
+                                }
+                                case "world" -> requirements.add(new World(config.getStringList(key + ".requirements.world")));
+                                case "biome" -> requirements.add(new Biome(config.getStringList(key + ".requirements.biome")));
+                                case "permission" -> requirements.add(new Permission(config.getString(key + ".requirements.permission")));
+                                case "region" -> {
+                                    if (Config.wg) requirements.add(new Region(config.getStringList(key + ".requirements.regions")));
+                                    else AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><red>You need to enable WorldGuard Integration to use region condition!</red>");
+                                }
+                                case "time" -> requirements.add(new Time(config.getStringList(key + ".requirements.time")));
+                                case "skill-level" -> requirements.add(new SkillLevel(config.getInt(key + ".requirements.skill-level")));
+                                case "papi-condition" -> {
+                                    if (Config.papi) requirements.add(new CustomPapi(config.getConfigurationSection(key + ".requirements.papi-condition").getValues(false)));
+                                    else AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><red>You need to enable PlaceholderAPI Integration to use papi condition!</red>");
+                                }
+                            }
+                        });
+                        loot.setRequirements(requirements);
+                    }
+
+                    String material = config.getString(key + ".material","COD");
+                    if (material.contains(":")) {
+                        if (material.startsWith("ItemsAdder:")){
+                            loot.setType("ia");
+                            loot.setId(material.substring(11));
+                        }
+                        else if (material.startsWith("Oraxen:")){
+                            loot.setType("oraxen");
+                            loot.setId(material.substring(7));
+                        }
+                        else if (material.startsWith("MMOItems:")){
+                            loot.setType("mmoitems");
+                            loot.setId(material.substring(9));
+                        }
+                        else if (material.startsWith("MythicMobs:")){
+                            loot.setType("mm");
+                            loot.setId(material.substring(11));
+                        }
+                        else {
+                            AdventureUtil.consoleMessage("<red>Unknown Item: " + key);
+                            return;
+                        }
+                        OTHERS.put(key, material);
+                        LOOT.put(key, loot);
+                    }
+                    else {
+
+                        Item item = new Item(material);
+
+                        item.setUnbreakable(config.getBoolean(key + ".unbreakable",false));
+
+                        if (config.contains(key + ".display.lore"))
+                            item.setLore(config.getStringList(key + ".display.lore"));
+                        if (config.contains(key + ".display.name"))
+                            item.setName(config.getString(key + ".display.name"));
+                        if (config.contains(key + ".custom-model-data"))
+                            item.setCustomModelData(config.getInt(key + ".custom-model-data"));
+                        if (config.contains(key + ".enchantments")){
+                            List<LeveledEnchantment> enchantmentList = new ArrayList<>();
+                            config.getConfigurationSection(key + ".enchantments").getKeys(false).forEach(enchant -> {
+                                LeveledEnchantment leveledEnchantment = new LeveledEnchantment(
+                                        NamespacedKey.fromString(enchant),
+                                        config.getInt(key + ".enchantments." + enchant)
+                                );
+                                enchantmentList.add(leveledEnchantment);
+                            });
+                            item.setEnchantment(enchantmentList);
+                        }
+                        if (config.contains(key + ".item_flags")) {
+                            ArrayList<ItemFlag> itemFlags = new ArrayList<>();
+                            config.getStringList(key + ".item_flags").forEach(flag -> itemFlags.add(ItemFlag.valueOf(flag)));
+                            item.setItemFlags(itemFlags);
+                        }
+                        if (config.contains(key + ".nbt")){
+                            Map<String, Object> nbt = config.getConfigurationSection(key + ".nbt").getValues(false);
+                            item.setNbt(nbt);
+                        }
+                        loot.setType("default");
+                        LOOT.put(key, loot);
+                        if (item.getMaterial().equalsIgnoreCase("AIR")) LootItem.put(key, new ItemStack(Material.AIR));
+                        else LootItem.put(key, ItemStackUtil.getFromItem(item));
+                    }
+                });
+            }
+            AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient>Loaded <green>" + LOOT.size() + " <gray>loots");
+        }
+
+        if (Config.mm){
+            File mob_file = new File(Main.instance.getDataFolder() + File.separator + "mobs");
+            if (!mob_file.exists()) {
+                if (!mob_file.mkdir()) {
+                    AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><red>Error! Failed to create mobs folder...</red>");
+                    return;
+                }
+                Main.instance.saveResource("mobs" + File.separator + "example.yml", false);
+            }
+            File[] mobFiles = mob_file.listFiles();
+            if (mobFiles != null) {
+
+                int size = LOOT.size();
+
+                for (File file : mobFiles) {
+                    YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
+                    Set<String> mobs = config.getKeys(false);
+                    mobs.forEach(key -> {
+
+                        if (!config.getBoolean(key + ".enable", true)) return;
+
+                        Mob loot = new Mob(key, config.getString(key + ".mythicmobsID", key));
+
+                        String[] diff = StringUtils.split(config.getString(key + ".difficulty", "1-1"),"-");
+                        Difficulty difficulty = new Difficulty(Integer.parseInt(diff[0]), Integer.parseInt(diff[1]));
+
+                        int weight = config.getInt(key + ".weight",10);
+                        int time = config.getInt(key + ".time",10000);
+
+                        loot.setDifficulty(difficulty);
+                        loot.setTime(time);
+                        loot.setWeight(weight);
+                        if (config.contains(key + ".nick")) loot.setNick(config.getString(key + ".nick"));
+                        else loot.setNick(config.getString(key + ".display.name", key));
+                        loot.setScore(config.getDouble(key + ".score",0));
+                        loot.setShowInFinder(config.getBoolean(key + ".show-in-fishfinder", true));
+                        loot.setMmLevel(config.getInt(key + ".level", 0));
+                        loot.setMobVector(new MobVector(
+                                config.getDouble(key + ".vector.horizontal",1.1),
+                                config.getDouble(key + ".vector.vertical",1.3)
+                        ));
+
+                        if (config.contains(key + ".group"))
+                            loot.setGroup(config.getString(key + ".group"));
+                        if (config.contains(key + ".layout"))
+                            loot.setLayout(config.getStringList(key + ".layout"));
+
+                        List<ActionB> successActions = new ArrayList<>();
+                        if (config.contains(key + ".action.success.message"))
+                            successActions.add(new MessageA(config.getStringList(key + ".action.success.message"), loot.getNick()));
+                        if (config.contains(key + ".action.success.command"))
+                            successActions.add(new CommandA(config.getStringList(key + ".action.success.command"), loot.getNick()));
+                        if (config.contains(key + ".action.success.exp"))
+                            successActions.add(new XPB(config.getInt(key + ".action.success.exp")));
+                        if (config.contains(key + ".action.success.mending"))
+                            successActions.add(new XPA(config.getInt(key + ".action.success.mending")));
+                        if (config.contains(key + ".action.success.skill-xp"))
+                            successActions.add(new FishingXPB(config.getInt(key + ".action.success.skill-xp")));
+                        loot.setSuccessActions(successActions);
+
+                        List<ActionB> failureActions = new ArrayList<>();
+                        if (config.contains(key + ".action.failure.message"))
+                            failureActions.add(new MessageA(config.getStringList(key + ".action.failure.message"), loot.getNick()));
+                        if (config.contains(key + ".action.failure.command"))
+                            failureActions.add(new CommandA(config.getStringList(key + ".action.failure.command"), loot.getNick()));
+                        if (config.contains(key + ".action.failure.exp"))
+                            failureActions.add(new XPB(config.getInt(key + ".action.failure.exp")));
+                        if (config.contains(key + ".action.failure.mending"))
+                            failureActions.add(new XPA(config.getInt(key + ".action.failure.mending")));
+                        if (config.contains(key + ".action.failure.skill-xp"))
+                            failureActions.add(new FishingXPB(config.getInt(key + ".action.failure.skill-xp")));
+                        loot.setFailureActions(failureActions);
+
+                        List<ActionB> hookActions = new ArrayList<>();
+                        if (config.contains(key + ".action.hook.message"))
+                            hookActions.add(new MessageA(config.getStringList(key + ".action.hook.message"), loot.getNick()));
+                        if (config.contains(key + ".action.hook.command"))
+                            hookActions.add(new CommandA(config.getStringList(key + ".action.hook.command"), loot.getNick()));
+                        if (config.contains(key + ".action.hook.exp"))
+                            successActions.add(new XPB(config.getInt(key + ".action.hook.exp")));
+                        if (config.contains(key + ".action.hook.mending"))
+                            successActions.add(new XPA(config.getInt(key + ".action.hook.mending")));
+                        if (config.contains(key + ".action.hook.skill-xp"))
+                            successActions.add(new FishingXPB(config.getInt(key + ".action.hook.skill-xp")));
+                        loot.setHookActions(hookActions);
+
+                        if (config.contains(key + ".requirements")){
+                            List<Requirement> requirements = new ArrayList<>();
+                            config.getConfigurationSection(key + ".requirements").getKeys(false).forEach(requirement -> {
+                                switch (requirement){
+                                    case "weather" -> requirements.add(new Weather(config.getStringList(key + ".requirements.weather")));
+                                    case "ypos" -> requirements.add(new YPos(config.getStringList(key + ".requirements.ypos")));
+                                    case "season" -> {
+                                        if (Config.season != null) requirements.add(new Season(config.getStringList(key + ".requirements.season")));
+                                        else AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><red>You need to enable season hook in config.yml to use season condition!</red>");
+                                    }
+                                    case "world" -> requirements.add(new World(config.getStringList(key + ".requirements.world")));
+                                    case "biome" -> requirements.add(new Biome(config.getStringList(key + ".requirements.biome")));
+                                    case "permission" -> requirements.add(new Permission(config.getString(key + ".requirements.permission")));
+                                    case "region" -> {
+                                        if (Config.wg) requirements.add(new Region(config.getStringList(key + ".requirements.regions")));
+                                        else AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><red>You need to enable WorldGuard Integration to use region condition!</red>");
+                                    }
+                                    case "time" -> requirements.add(new Time(config.getStringList(key + ".requirements.time")));
+                                    case "skill-level" -> requirements.add(new SkillLevel(config.getInt(key + ".requirements.skill-level")));
+                                    case "papi-condition" -> {
+                                        if (Config.papi) requirements.add(new CustomPapi(config.getConfigurationSection(key + ".requirements.papi-condition").getValues(false)));
+                                        else AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><red>You need to enable PlaceholderAPI Integration to use papi condition!</red>");
+                                    }
+                                }
+                            });
+                            loot.setRequirements(requirements);
+                        }
+                        LOOT.put(key, loot);
+                    });
+                }
+                AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient>Loaded <green>" + (LOOT.size() - size) + " <gray>mobs");
+            }
         }
     }
 
     public static void loadUtil() {
 
-        UTIL.clear();
-        UTILITEM.clear();
+        UtilItem.clear();
 
-        YamlConfiguration config = getConfig("utils.yml");
-        Set<String> keys = Objects.requireNonNull(config.getConfigurationSection("utils")).getKeys(false);
-        keys.forEach(key -> {
+        File util_file = new File(Main.instance.getDataFolder() + File.separator + "utils");
 
-            String material;
-            if (config.contains("utils." + key + ".material")) {
-                material = config.getString("utils." + key + ".material");
-            } else {
-                AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><gradient:#D38312:#A83279> Ошибка! Предмет не существует для " + key + " !</gradient>");
+        if (!util_file.exists()) {
+            if (!util_file.mkdir()) {
+                AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><red>Error! Failed to create utils folder...</red>");
                 return;
             }
+            Main.instance.saveResource("utils" + File.separator + "fishfinder.yml", false);
+        }
 
-            Util utilInstance = new Util(material);
-            if (config.contains("utils." + key + ".custom-model-data"))
-                utilInstance.setCustommodeldata(config.getInt("utils." + key + ".custom-model-data"));
-            if (config.contains("utils." + key + ".display.name"))
-                utilInstance.setName(config.getString("utils." + key + ".display.name"));
-            if (config.contains("utils." + key + ".display.lore"))
-                utilInstance.setLore(config.getStringList("utils." + key + ".display.lore"));
-            if (config.contains("utils." + key + ".nbt"))
-                utilInstance.setNbt((Map<String, Object>) config.getMapList("utils." + key + ".nbt").get(0));
-            utilInstance.setUnbreakable(config.getBoolean("utils." + key + ".unbreakable",false));
-            if (config.contains("utils." + key + ".enchantments")) {
-                ArrayList<Enchantment> arrayList = new ArrayList<>();
-                config.getStringList("utils." + key + ".enchantments").forEach(enchant -> {
-                    String[] split = StringUtils.split(enchant, "/");
-                    NamespacedKey namespacedKey = NamespacedKey.fromString(split[0]);
-                    arrayList.add(new Enchantment(namespacedKey, Integer.parseInt(split[1])));
-                });
-                utilInstance.setEnchantment(arrayList);
-            }
-            if (config.contains("utils." + key + ".item_flags")) {
-                ArrayList<ItemFlag> arrayList = new ArrayList<>();
-                config.getStringList("utils." + key + ".item_flags").forEach(flag -> {
-                    arrayList.add(ItemFlag.valueOf(flag));
-                });
-                utilInstance.setItemFlags(arrayList);
-            }
+        File[] files = util_file.listFiles();
 
-            UTIL.put(key, utilInstance);
-            UTILITEM.put(key, NBTUtil.addIdentifier(ItemStackGenerator.fromItem(utilInstance), "util", key));
-        });
-        if (keys.size() != UTILITEM.size()){
-            AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><gradient:#D38312:#A83279> Ошибка! utils.yml не был найден!</gradient>");
-        } else {
-            AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><white>" + keys.size() + " <color:#E1FFFF>утилит было загружено!");
+        if (files != null) {
+            for (File file : files) {
+                YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
+                Set<String> keys = config.getKeys(false);
+                keys.forEach(key -> {
+
+                    if (!config.getBoolean(key + ".enable", true)) return;
+
+                    Item item = new Item(config.getString(key + ".material", "COMPASS"));
+                    item.setUnbreakable(config.getBoolean(key + ".unbreakable", false));
+                    if (config.contains(key + ".display.lore"))
+                        item.setLore(config.getStringList(key + ".display.lore"));
+                    if (config.contains(key + ".display.name"))
+                        item.setName(config.getString(key + ".display.name"));
+                    if (config.contains(key + ".custom-model-data"))
+                        item.setCustomModelData(config.getInt(key + ".custom-model-data"));
+                    if (config.contains(key + ".enchantments")) {
+                        List<LeveledEnchantment> enchantmentList = new ArrayList<>();
+                        config.getConfigurationSection(key + ".enchantments").getKeys(false).forEach(enchant -> {
+                            LeveledEnchantment leveledEnchantment = new LeveledEnchantment(
+                                    NamespacedKey.fromString(enchant),
+                                    config.getInt(key + ".enchantments." + enchant)
+                            );
+                            enchantmentList.add(leveledEnchantment);
+                        });
+                        item.setEnchantment(enchantmentList);
+                    }
+                    if (config.contains(key + ".item_flags")) {
+                        ArrayList<ItemFlag> itemFlags = new ArrayList<>();
+                        config.getStringList(key + ".item_flags").forEach(flag -> itemFlags.add(ItemFlag.valueOf(flag)));
+                        item.setItemFlags(itemFlags);
+                    }
+                    if (config.contains(key + ".nbt")) {
+                        Map<String, Object> nbt = config.getConfigurationSection(key + ".nbt").getValues(false);
+                        item.setNbt(nbt);
+                    }
+                    UtilItem.put(key, NBTUtil.addIdentifier(ItemStackUtil.getFromItem(item), "util", key));
+                });
+            }
+            AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient>Loaded <green>" + UtilItem.size() + " <gray>utils");
         }
     }
 
     public static void loadRod() {
 
         ROD.clear();
-        RODITEM.clear();
+        RodItem.clear();
 
-        YamlConfiguration config = getConfig("rods.yml");
-        Set<String> keys = Objects.requireNonNull(config.getConfigurationSection("rods")).getKeys(false);
+        File rod_file = new File(Main.instance.getDataFolder() + File.separator + "rods");
 
-        keys.forEach(key -> {
-            Rod rodInstance = new Rod();
-            if (config.contains("rods." + key + ".display.name"))
-                rodInstance.setName(config.getString("rods." + key + ".display.name"));
-            if (config.contains("rods." + key + ".display.lore"))
-                rodInstance.setLore(config.getStringList("rods." + key + ".display.lore"));
-            if (config.contains("rods." + key + ".nbt"))
-                rodInstance.setNbt((Map<String, Object>)(config.getMapList("rods." + key + ".nbt").get(0)));
-            if (config.contains("rods." + key + ".custom-model-data"))
-                rodInstance.setCustommodeldata(config.getInt("rods." + key + ".custom-model-data"));
-            rodInstance.setUnbreakable(config.getBoolean("rods." + key + ".unbreakable",false));
-            if (config.contains("rods." + key + ".enchantments")) {
-                ArrayList<Enchantment> arrayList = new ArrayList<>();
-                config.getStringList("rods." + key + ".enchantments").forEach(enchant -> {
-                    String[] split = StringUtils.split(enchant, "/");
-                    NamespacedKey namespacedKey = NamespacedKey.fromString(split[0]);
-                    arrayList.add(new Enchantment(namespacedKey, Integer.parseInt(split[1])));
-                });
-                rodInstance.setEnchantment(arrayList);
+        if (!rod_file.exists()) {
+            if (!rod_file.mkdir()) {
+                AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><red>Error! Failed to create rods folder...</red>");
+                return;
             }
-            if (config.contains("rods." + key + ".item_flags")) {
-                ArrayList<ItemFlag> arrayList = new ArrayList<>();
-                config.getStringList("rods." + key + ".item_flags").forEach(flag -> {
-                    arrayList.add(ItemFlag.valueOf(flag));
-                });
-                rodInstance.setItemFlags(arrayList);
-            }
-            if (config.contains("rods." + key + ".modifier")){
-                config.getConfigurationSection("rods." + key + ".modifier").getKeys(false).forEach(modifier -> {
-                    switch (modifier){
-                        case "weight-PM" -> {
-                            HashMap<String, Integer> pm = new HashMap<>();
-                            config.getConfigurationSection("rods." + key + ".modifier.weight-PM").getValues(false).forEach((group, value) -> {
-                                pm.put(group, (Integer) value);
-                            });
-                            rodInstance.setWeightPM(pm);
-                        }
-                        case "weight-MQ" -> {
-                            HashMap<String, Double> mq = new HashMap<>();
-                            config.getConfigurationSection("rods." + key + ".modifier.weight-MQ").getValues(false).forEach((group, value) -> {
-                                mq.put(group, (Double) value);
-                            });
-                            rodInstance.setWeightMQ(mq);
-                        }
-                        case "time" -> rodInstance.setTime(config.getDouble("rods." + key + ".modifier.time"));
-                        case "difficulty" -> rodInstance.setDifficulty(config.getInt("rods." + key + ".modifier.difficulty"));
-                        case "double-loot" -> rodInstance.setDoubleLoot(config.getDouble("rods." + key + ".modifier.double-loot"));
-                        case "score" -> rodInstance.setScoreModifier(config.getDouble("rods." + key + ".modifier.score"));
+            Main.instance.saveResource("rods" + File.separator + "default.yml", false);
+        }
+
+        File[] files = rod_file.listFiles();
+
+        if (files != null) {
+            for (File file : files) {
+
+                YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
+                Set<String> keys = config.getKeys(false);
+
+                keys.forEach(key -> {
+
+                    Item item = new Item("FISHING_ROD");
+                    item.setUnbreakable(config.getBoolean(key + ".unbreakable", false));
+                    if (config.contains(key + ".display.lore"))
+                        item.setLore(config.getStringList(key + ".display.lore"));
+                    if (config.contains(key + ".display.name"))
+                        item.setName(config.getString(key + ".display.name"));
+                    if (config.contains(key + ".custom-model-data"))
+                        item.setCustomModelData(config.getInt(key + ".custom-model-data"));
+                    if (config.contains(key + ".enchantments")) {
+                        List<LeveledEnchantment> enchantmentList = new ArrayList<>();
+                        config.getConfigurationSection(key + ".enchantments").getKeys(false).forEach(enchant -> {
+                            LeveledEnchantment leveledEnchantment = new LeveledEnchantment(
+                                    NamespacedKey.fromString(enchant),
+                                    config.getInt(key + ".enchantments." + enchant)
+                            );
+                            enchantmentList.add(leveledEnchantment);
+                        });
+                        item.setEnchantment(enchantmentList);
+                    }
+                    if (config.contains(key + ".item_flags")) {
+                        ArrayList<ItemFlag> itemFlags = new ArrayList<>();
+                        config.getStringList(key + ".item_flags").forEach(flag -> itemFlags.add(ItemFlag.valueOf(flag)));
+                        item.setItemFlags(itemFlags);
+                    }
+                    if (config.contains(key + ".nbt")) {
+                        Map<String, Object> nbt = config.getConfigurationSection(key + ".nbt").getValues(false);
+                        item.setNbt(nbt);
+                    }
+                    RodItem.put(key, NBTUtil.addIdentifier(ItemStackUtil.getFromItem(item), "rod", key));
+
+                    if (config.contains(key + ".modifier")) {
+                        Bonus bonus = new Bonus();
+                        config.getConfigurationSection(key + ".modifier").getKeys(false).forEach(modifier -> {
+                            switch (modifier) {
+                                case "weight-PM" -> {
+                                    HashMap<String, Integer> pm = new HashMap<>();
+                                    config.getConfigurationSection(key + ".modifier.weight-PM").getValues(false).forEach((group, value) -> {
+                                        pm.put(group, (Integer) value);
+                                    });
+                                    bonus.setWeightPM(pm);
+                                }
+                                case "weight-MQ" -> {
+                                    HashMap<String, Double> mq = new HashMap<>();
+                                    config.getConfigurationSection(key + ".modifier.weight-MQ").getValues(false).forEach((group, value) -> {
+                                        mq.put(group, Double.parseDouble(String.valueOf(value))-1);
+                                    });
+                                    bonus.setWeightMQ(mq);
+                                }
+                                case "time" -> bonus.setTime(config.getDouble(key + ".modifier.time"));
+                                case "difficulty" -> bonus.setDifficulty(config.getInt(key + ".modifier.difficulty"));
+                                case "double-loot" -> bonus.setDoubleLoot(config.getDouble(key + ".modifier.double-loot"));
+                                case "score" -> bonus.setScore(config.getDouble(key + ".modifier.score"));
+                            }
+                        });
+                        ROD.put(key, bonus);
                     }
                 });
             }
-            ROD.put(key, rodInstance);
-            RODITEM.put(key, NBTUtil.addIdentifier(ItemStackGenerator.fromItem(rodInstance), "rod", key));
-        });
-
-        if (keys.size() != RODITEM.size()){
-            AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><gradient:#D38312:#A83279> Ошибка! rods.yml не был найден!</gradient>");
-        } else {
-            AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><white>" + keys.size() + " <color:#E1FFFF>удочек было загружено!");
+            AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient>Loaded <green>" + RodItem.size() + " <gray>rods");
         }
     }
 
     public static void loadBait(){
 
-        BAITITEM.clear();
         BAIT.clear();
+        BaitItem.clear();
 
-        YamlConfiguration config = getConfig("baits.yml");
-        Set<String> keys = config.getConfigurationSection("baits").getKeys(false);
+        File bait_file = new File(Main.instance.getDataFolder() + File.separator + "baits");
 
-        keys.forEach(key -> {
-            String material;
-            if (config.contains("baits." + key + ".material")) {
-                material = config.getString("baits." + key + ".material");
-            } else {
-                AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><gradient:#D38312:#A83279> Ошибка! Не указан матерьял для " + key + " !</gradient>");
+        if (!bait_file.exists()) {
+            if (!bait_file.mkdir()) {
+                AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><red>Error! Failed to create baits folder...</red>");
                 return;
             }
-            Bait baitInstance = new Bait(material);
-            if (config.contains("baits." + key + ".display.lore"))
-                baitInstance.setLore(config.getStringList("baits." + key + ".display.lore"));
-            if (config.contains("baits." + key + ".display.name"))
-                baitInstance.setName(config.getString("baits." + key + ".display.name"));
-            if (config.contains("baits." + key + ".custom-model-data"))
-                baitInstance.setCustommodeldata(config.getInt("baits." + key + ".custom-model-data"));
-            if (config.contains("baits." + key + ".nbt")) {
-                baitInstance.setNbt((Map<String, Object>) config.getMapList("baits." + key + ".nbt").get(0));
-            }
-            baitInstance.setUnbreakable(config.getBoolean("baits." + key + ".unbreakable",false));
-            if (config.contains("baits." + key + ".enchantments")) {
-                ArrayList<Enchantment> arrayList = new ArrayList<>();
-                config.getStringList("baits." + key + ".enchantments").forEach(enchant -> {
-                    String[] split = StringUtils.split(enchant, "/");
-                    NamespacedKey namespacedKey = NamespacedKey.fromString(split[0]);
-                    arrayList.add(new Enchantment(namespacedKey, Integer.parseInt(split[1])));
-                });
-                baitInstance.setEnchantment(arrayList);
-            }
-            if (config.contains("baits." + key + ".item_flags")) {
-                ArrayList<ItemFlag> arrayList = new ArrayList<>();
-                config.getStringList("baits." + key + ".item_flags").forEach(flag -> {
-                    arrayList.add(ItemFlag.valueOf(flag));
-                });
-                baitInstance.setItemFlags(arrayList);
-            }
-            if (config.contains("baits." + key + ".modifier")){
-                config.getConfigurationSection("baits." + key + ".modifier").getKeys(false).forEach(modifier -> {
-                    switch (modifier){
-                        case "weight-PM" -> {
-                            HashMap<String, Integer> pm = new HashMap<>();
-                            config.getConfigurationSection("baits." + key + ".modifier.weight-PM").getValues(false).forEach((group, value) -> {
-                                pm.put(group, (Integer) value);
-                            });
-                            baitInstance.setWeightPM(pm);
-                        }
-                        case "weight-MQ" -> {
-                            HashMap<String, Double> mq = new HashMap<>();
-                            config.getConfigurationSection("baits." + key + ".modifier.weight-MQ").getValues(false).forEach((group, value) -> {
-                                mq.put(group, (Double) value);
-                            });
-                            baitInstance.setWeightMQ(mq);
-                        }
-                        case "time" -> baitInstance.setTime(config.getDouble("baits." + key + ".modifier.time"));
-                        case "difficulty" -> baitInstance.setDifficulty(config.getInt("baits." + key + ".modifier.difficulty"));
-                        case "double-loot" -> baitInstance.setDoubleLoot(config.getDouble("baits." + key + ".modifier.double-loot"));
-                        case "score" -> baitInstance.setScoreModifier(config.getDouble("baits." + key + ".modifier.score"));
+            Main.instance.saveResource("baits" + File.separator + "default.yml", false);
+        }
+
+        File[] files = bait_file.listFiles();
+
+        if (files != null) {
+            for (File file : files) {
+
+                YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
+                Set<String> keys = config.getKeys(false);
+                keys.forEach(key -> {
+
+                    Item item = new Item(config.getString(key + ".material", "PAPER"));
+                    item.setUnbreakable(config.getBoolean(key + ".unbreakable", false));
+                    if (config.contains(key + ".display.lore"))
+                        item.setLore(config.getStringList(key + ".display.lore"));
+                    if (config.contains(key + ".display.name"))
+                        item.setName(config.getString(key + ".display.name"));
+                    if (config.contains(key + ".custom-model-data"))
+                        item.setCustomModelData(config.getInt(key + ".custom-model-data"));
+                    if (config.contains(key + ".enchantments")) {
+                        List<LeveledEnchantment> enchantmentList = new ArrayList<>();
+                        config.getConfigurationSection(key + ".enchantments").getKeys(false).forEach(enchant -> {
+                            LeveledEnchantment leveledEnchantment = new LeveledEnchantment(
+                                    NamespacedKey.fromString(enchant),
+                                    config.getInt(key + ".enchantments." + enchant)
+                            );
+                            enchantmentList.add(leveledEnchantment);
+                        });
+                        item.setEnchantment(enchantmentList);
+                    }
+                    if (config.contains(key + ".item_flags")) {
+                        ArrayList<ItemFlag> itemFlags = new ArrayList<>();
+                        config.getStringList(key + ".item_flags").forEach(flag -> itemFlags.add(ItemFlag.valueOf(flag)));
+                        item.setItemFlags(itemFlags);
+                    }
+                    if (config.contains(key + ".nbt")) {
+                        Map<String, Object> nbt = config.getConfigurationSection(key + ".nbt").getValues(false);
+                        item.setNbt(nbt);
+                    }
+                    BaitItem.put(key, NBTUtil.addIdentifier(ItemStackUtil.getFromItem(item), "bait", key));
+
+                    if (config.contains(key + ".modifier")) {
+                        Bonus bonus = new Bonus();
+                        config.getConfigurationSection(key + ".modifier").getKeys(false).forEach(modifier -> {
+                            switch (modifier) {
+                                case "weight-PM" -> {
+                                    HashMap<String, Integer> pm = new HashMap<>();
+                                    config.getConfigurationSection(key + ".modifier.weight-PM").getValues(false).forEach((group, value) -> {
+                                        pm.put(group, (Integer) value);
+                                    });
+                                    bonus.setWeightPM(pm);
+                                }
+                                case "weight-MQ" -> {
+                                    HashMap<String, Double> mq = new HashMap<>();
+                                    config.getConfigurationSection(key + ".modifier.weight-MQ").getValues(false).forEach((group, value) -> {
+                                        mq.put(group, Double.parseDouble(String.valueOf(value))-1);
+                                    });
+                                    bonus.setWeightMQ(mq);
+                                }
+                                case "time" -> bonus.setTime(config.getDouble(key + ".modifier.time"));
+                                case "difficulty" -> bonus.setDifficulty(config.getInt(key + ".modifier.difficulty"));
+                                case "double-loot" -> bonus.setDoubleLoot(config.getDouble(key + ".modifier.double-loot"));
+                                case "score" -> bonus.setScore(config.getDouble(key + ".modifier.score"));
+                            }
+                        });
+                        BAIT.put(key, bonus);
                     }
                 });
             }
-            BAIT.put(key, baitInstance);
-            BAITITEM.put(key, NBTUtil.addIdentifier(ItemStackGenerator.fromItem(baitInstance), "bait", key));
-        });
-
-        if (keys.size() != BAITITEM.size()){
-            AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><gradient:#D38312:#A83279> Ошибка! baits.yml не был найден!</gradient>");
-        } else {
-            AdventureManager.consoleMessage("<gradient:#0070B3:#A0EACF>[DraimFishing] </gradient><white>" + keys.size() + " <color:#E1FFFF>приманок было загружено!");
+            AdventureUtil.consoleMessage("[DraimFishing] Loaded <green>" + BaitItem.size() + " <gray>baits");
         }
     }
 
     public static void loadCompetitions(){
-        Competitions.clear();
-        CompetitionsCommand.clear();
+
+        CompetitionsT.clear();
+        CompetitionsC.clear();
+
         YamlConfiguration config = getConfig("competition.yml");
-        Set<String> keys = config.getConfigurationSection("").getKeys(false);
+
+        Set<String> keys = config.getKeys(false);
         keys.forEach(key -> {
             CompetitionConfig competitionConfig;
-            if (config.getBoolean(key + ".bossbar.enable", true)){
+            boolean enableBsb = config.getBoolean(key + ".bossbar.enable", false);
+            if (enableBsb){
                 competitionConfig = new CompetitionConfig(true);
                 BossBarConfig bossBarConfig = new BossBarConfig(
-                        config.getString(key + ".bossbar.text"),
-                        BossBar.Overlay.valueOf(config.getString(key + ".bossbar.overlay")),
-                        BossBar.Color.valueOf(config.getString(key + ".bossbar.color")),
-                        config.getInt(key + ".bossbar.refresh-rate")
+                        config.getString(key + ".bossbar.text", "You forget to set text for bossbar"),
+                        BossBar.Overlay.valueOf(config.getString(key + ".bossbar.overlay","SOLID").toUpperCase()),
+                        BossBar.Color.valueOf(config.getString(key + ".bossbar.color","WHITE").toUpperCase()),
+                        config.getInt(key + ".bossbar.refresh-rate",5)
                 );
                 competitionConfig.setBossBarConfig(bossBarConfig);
-            }else {
-                competitionConfig = new CompetitionConfig(false);
-            }
+            } else competitionConfig = new CompetitionConfig(false);
+
             competitionConfig.setDuration(config.getInt(key + ".duration",600));
             competitionConfig.setGoal(Goal.valueOf(config.getString(key + ".goal", "RANDOM")));
-            if (config.contains(key + ".broadcast.start")){
+            if (config.contains(key + ".broadcast.start"))
                 competitionConfig.setStartMessage(config.getStringList(key + ".broadcast.start"));
-            }
-            if (config.contains(key + ".broadcast.end")){
+            if (config.contains(key + ".broadcast.end"))
                 competitionConfig.setEndMessage(config.getStringList(key + ".broadcast.end"));
-            }
-            if (config.contains(key + ".command.join")){
+            if (config.contains(key + ".command.join"))
                 competitionConfig.setJoinCommand(config.getStringList(key + ".command.join"));
-            }
-            if (config.contains(key + ".command.start")){
+            if (config.contains(key + ".command.start"))
                 competitionConfig.setStartCommand(config.getStringList(key + ".command.start"));
-            }
-            if (config.contains(key + ".command.end")){
+            if (config.contains(key + ".command.end"))
                 competitionConfig.setEndCommand(config.getStringList(key + ".command.end"));
-            }
-            if (config.contains(key + ".min-players")){
+            if (config.contains(key + ".min-players"))
                 competitionConfig.setMinPlayers(config.getInt(key + ".min-players"));
-            }
             if (config.contains(key + ".prize")){
-                HashMap<String, List<Reward>> rewardsMap = new HashMap<>();
+                HashMap<String, List<ActionB>> rewardsMap = new HashMap<>();
                 config.getConfigurationSection(key + ".prize").getKeys(false).forEach(rank -> {
-                    List<Reward> rewards = new ArrayList<>();
-                    if (config.contains(key + ".prize." + rank + ".messages")){
-                        rewards.add(new MessageImpl(config.getStringList(key + ".prize." + rank + ".messages")));
-                    }
-                    if (config.contains(key + ".prize." + rank + ".commands")){
-                        rewards.add(new CommandImpl(config.getStringList(key + ".prize." + rank + ".commands")));
-                    }
+                    List<ActionB> rewards = new ArrayList<>();
+                    if (config.contains(key + ".prize." + rank + ".messages"))
+                        rewards.add(new MessageB(config.getStringList(key + ".prize." + rank + ".messages")));
+                    if (config.contains(key + ".prize." + rank + ".commands"))
+                        rewards.add(new CommandB(config.getStringList(key + ".prize." + rank + ".commands")));
                     rewardsMap.put(rank, rewards);
                 });
                 competitionConfig.setRewards(rewardsMap);
             }
-            config.getStringList(key + ".start-time").forEach(time -> {
-                Competitions.put(time, competitionConfig);
-            });
-            CompetitionsCommand.put(key, competitionConfig);
+            if (config.contains(key + ".start-time")){
+                config.getStringList(key + ".start-time").forEach(time -> CompetitionsT.put(time, competitionConfig));
+            }
+            CompetitionsC.put(key, competitionConfig);
         });
     }
 
     public static void tryEnableJedis(){
         YamlConfiguration configuration = ConfigReader.getConfig("redis.yml");
+        useRedis = false;
         if (configuration.getBoolean("redis.enable")){
             JedisUtil.initializeRedis(configuration);
-            JedisUtil.useRedis = true;
-        }else {
-            JedisUtil.useRedis = false;
+            useRedis = true;
         }
     }
 
     public static void loadBars(){
         LAYOUT.clear();
         YamlConfiguration config = ConfigReader.getConfig("bars.yml");
-        Set<String> keys = Objects.requireNonNull(config.getConfigurationSection("")).getKeys(false);
+        Set<String> keys = config.getKeys(false);
         keys.forEach(key -> {
             int range = config.getInt(key + ".range");
             Set<String> rates = Objects.requireNonNull(config.getConfigurationSection(key + ".layout")).getKeys(false);
             double[] successRate = new double[rates.size()];
-            for(int i = 0; i < rates.size(); i++){
+            for(int i = 0; i < rates.size(); i++)
                 successRate[i] = config.getDouble(key + ".layout." +(i + 1));
-            }
             int size = rates.size()*range -1;
-            Layout layout = new Layout(key, range, successRate, size);
+            Layout layout = new Layout(range, successRate, size);
             layout.setTitle(config.getString(key + ".title"," "));
             layout.setBar(config.getString(key + ".subtitle.bar","뀃"));
             layout.setEnd(config.getString(key + ".subtitle.end","</font>"));
-            layout.setStart(config.getString(key + ".subtitle.start","<font:draimishing:default>"));
+            layout.setStart(config.getString(key + ".subtitle.start","<font:draimfishing:default>"));
             layout.setPointer(config.getString(key + ".subtitle.pointer","뀄"));
             layout.setPointerOffset(config.getString(key + ".subtitle.pointer_offset","뀂"));
             layout.setOffset(config.getString(key + ".subtitle.offset","뀁"));
             LAYOUT.put(key, layout);
         });
+    }
+
+    public static void loadEnchants(){
+
+        ENCHANTS.clear();
+
+        YamlConfiguration config = ConfigReader.getConfig("enchant-bonus.yml");
+        Set<String> keys = config.getKeys(false);
+        keys.forEach(key -> {
+            HashMap<Integer, Bonus> levelBonus = new HashMap<>();
+            config.getConfigurationSection(key).getKeys(false).forEach(level -> {
+                Bonus bonus = new Bonus();
+                config.getConfigurationSection(key + "." + level).getKeys(false).forEach(modifier -> {
+                    switch (modifier) {
+                        case "weight-PM" -> {
+                            HashMap<String, Integer> pm = new HashMap<>();
+                            config.getConfigurationSection(key + "." + level + ".weight-PM").getValues(false).forEach((group, value) -> {
+                                pm.put(group, (Integer) value);
+                            });
+                            bonus.setWeightPM(pm);
+                        }
+                        case "weight-MQ" -> {
+                            HashMap<String, Double> mq = new HashMap<>();
+                            config.getConfigurationSection(key + "." + level + ".weight-MQ").getValues(false).forEach((group, value) -> {
+                                mq.put(group, Double.parseDouble(String.valueOf(value))-1);
+                            });
+                            bonus.setWeightMQ(mq);
+                        }
+                        case "time" -> bonus.setTime(config.getDouble(key + "." + level + ".time"));
+                        case "difficulty" -> bonus.setDifficulty(config.getInt(key + "." + level + ".difficulty"));
+                        case "double-loot" -> bonus.setDoubleLoot(config.getDouble(key + "." + level + ".double-loot"));
+                        case "score" -> bonus.setScore(config.getDouble(key + "." + level + ".score"));
+                    }
+                });
+                levelBonus.put(Integer.parseInt(level), bonus);
+            });
+            ENCHANTS.put(key, levelBonus);
+        });
+        AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient>Loaded <green>" + ENCHANTS.size() + " <gray>enchantments");
     }
 }

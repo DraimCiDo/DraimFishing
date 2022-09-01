@@ -2,40 +2,38 @@ package net.draimcido.draimfishing.utils;
 
 import de.tr7zw.changeme.nbtapi.NBTCompound;
 import de.tr7zw.changeme.nbtapi.NBTItem;
+import org.bukkit.configuration.MemorySection;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.*;
 
 public class NBTUtil {
 
-    private final Map<String,Object> nbt;
-    private final NBTItem nbtItem;
-
-    public NBTUtil(Map<String,Object> nbt, ItemStack itemStack){
-        this.nbt = nbt;
-        this.nbtItem = new NBTItem(itemStack);
-    }
-
     public static ItemStack addIdentifier(ItemStack itemStack, String type, String id){
         NBTItem nbtItem = new NBTItem(itemStack);
-        nbtItem.addCompound("CustomFishing");
-        nbtItem.getCompound("CustomFishing").setString("type", type);
-        nbtItem.getCompound("CustomFishing").setString("id", id);
+        nbtItem.addCompound("DraimFishing");
+        nbtItem.getCompound("DraimFishing").setString("type", type);
+        nbtItem.getCompound("DraimFishing").setString("id", id);
         return nbtItem.getItem();
     }
 
-    public NBTItem getNBTItem(){
+    public static NBTItem getNBTItem(Map<String,Object> nbt, ItemStack itemStack){
+        NBTItem nbtItem = new NBTItem(itemStack);
         setTags(nbt, nbtItem);
-        return this.nbtItem;
+        return nbtItem;
     }
 
-    private void setTags(Map<String,Object> map, NBTCompound nbtCompound){
+    public static void setTags(Map<String,Object> map, NBTCompound nbtCompound){
         map.keySet().forEach(key -> {
-            if (map.get(key) instanceof Map map2){
+            if (map.get(key) instanceof MemorySection map2){
                 nbtCompound.addCompound(key);
-                setTags(map2, nbtCompound.getCompound(key));
+                setTags(map2.getValues(false), nbtCompound.getCompound(key));
             }
-            else if(map.get(key) instanceof List list){
+            else if (map.get(key) instanceof Map<?,?> map1){
+                nbtCompound.addCompound(key);
+                setTags((Map<String, Object>) map1, nbtCompound.getCompound(key));
+            }
+            else if (map.get(key) instanceof List list){
                 for (Object o : list) {
                     if (o instanceof String s) {
                         if (s.startsWith("(String) ")) {
@@ -55,7 +53,8 @@ public class NBTUtil {
                             int[] array = Arrays.stream(split).mapToInt(Integer::parseInt).toArray();
                             nbtCompound.getIntArrayList(key).add(array);
                         }
-                    } else if (o instanceof Map map1) {
+                    }
+                    else if (o instanceof Map map1) {
                         setTags(map1, nbtCompound.getCompoundList(key).addCompound());
                     }
                 }
@@ -70,7 +69,7 @@ public class NBTUtil {
                         nbtCompound.setLong(key, Long.valueOf(string.substring(7)));
                     }else if (string.startsWith("(Float) ")){
                         nbtCompound.setFloat(key, Float.valueOf(string.substring(8)));
-                    } else if (string.startsWith("(Double) ")){
+                    }else if (string.startsWith("(Double) ")){
                         nbtCompound.setDouble(key, Double.valueOf(string.substring(9)));
                     }else if (string.startsWith("(Short) ")){
                         nbtCompound.setShort(key, Short.valueOf(string.substring(8)));

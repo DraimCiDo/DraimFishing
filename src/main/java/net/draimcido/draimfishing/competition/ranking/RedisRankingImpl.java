@@ -12,27 +12,27 @@ public class RedisRankingImpl implements Ranking{
 
     public void addPlayer(CompetitionPlayer competitionPlayer) {
         Jedis jedis = JedisUtil.getJedis();
-        jedis.zadd("cf_competition", competitionPlayer.getScore(), competitionPlayer.getPlayer());
+        jedis.zadd("df_competition", competitionPlayer.getScore(), competitionPlayer.getPlayer());
         jedis.close();
     }
 
     public void removePlayer(CompetitionPlayer competitionPlayer) {
         Jedis jedis = JedisUtil.getJedis();
-        jedis.zrem("cf_competition", competitionPlayer.getPlayer());
+        jedis.zrem("df_competition", competitionPlayer.getPlayer());
         jedis.close();
     }
 
     @Override
     public void clear() {
         Jedis jedis = JedisUtil.getJedis();
-        jedis.zremrangeByRank("cf_competition",0,-1);
+        jedis.zremrangeByRank("df_competition",0,-1);
         jedis.close();
     }
 
     @Override
     public CompetitionPlayer getCompetitionPlayer(String player) {
         Jedis jedis = JedisUtil.getJedis();
-        Double score = jedis.zscore("cf_competition", player);
+        Double score = jedis.zscore("df_competition", player);
         jedis.close();
         if (score == 0) return null;
         return new CompetitionPlayer(player, Float.parseFloat(score.toString()));
@@ -41,7 +41,7 @@ public class RedisRankingImpl implements Ranking{
     @Override
     public Iterator<String> getIterator() {
         Jedis jedis = JedisUtil.getJedis();
-        List<String> players = jedis.zrevrange("cf_competition", 0, -1);
+        List<String> players = jedis.zrevrange("df_competition", 0, -1);
         jedis.close();
         return players.iterator();
     }
@@ -49,7 +49,7 @@ public class RedisRankingImpl implements Ranking{
     @Override
     public int getSize() {
         Jedis jedis = JedisUtil.getJedis();
-        long size = jedis.zcard("cf_competition");
+        long size = jedis.zcard("df_competition");
         jedis.close();
         return (int) size;
     }
@@ -57,7 +57,7 @@ public class RedisRankingImpl implements Ranking{
     @Override
     public String getPlayerRank(String player) {
         Jedis jedis = JedisUtil.getJedis();
-        Long rank = jedis.zrevrank("cf_competition", player);
+        Long rank = jedis.zrevrank("df_competition", player);
         jedis.close();
         if(rank == null){
             return null;
@@ -69,7 +69,7 @@ public class RedisRankingImpl implements Ranking{
     public CompetitionPlayer[] getTop3Player() {
         CompetitionPlayer[] competitionPlayers = new CompetitionPlayer[3];
         Jedis jedis = JedisUtil.getJedis();
-        List<Tuple> players = jedis.zrevrangeWithScores("cf_competition", 0, -1);
+        List<Tuple> players = jedis.zrevrangeWithScores("df_competition", 0, -1);
         jedis.close();
         int index = 1;
         for (Tuple tuple : players){
@@ -91,7 +91,7 @@ public class RedisRankingImpl implements Ranking{
     @Override
     public void refreshData(String player, float score) {
         Jedis jedis = JedisUtil.getJedis();
-        jedis.zincrby("cf_competition", score, player);
+        jedis.zincrby("df_competition", score, player);
         jedis.close();
     }
 }
