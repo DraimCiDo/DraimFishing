@@ -98,7 +98,7 @@ public class ItemStackUtil {
     public static void addRandomDamage(ItemStack itemStack){
         if (itemStack.getItemMeta() instanceof Damageable damageable){
             damageable.setDamage((int) (itemStack.getType().getMaxDurability() * Math.random()));
-            itemStack.setItemMeta((ItemMeta) damageable);
+            itemStack.setItemMeta(damageable);
         }
     }
 

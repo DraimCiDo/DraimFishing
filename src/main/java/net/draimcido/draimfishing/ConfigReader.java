@@ -19,6 +19,7 @@ import net.draimcido.draimfishing.requirements.*;
 import net.draimcido.draimfishing.utils.*;
 import org.apache.commons.lang.StringUtils;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.MemorySection;
@@ -88,6 +89,7 @@ public class ConfigReader{
         public static boolean hasWhitelist;
         public static boolean needRodFishing;
         public static boolean disableJobXp;
+        public static boolean isSpigot;
         public static int fishFinderCoolDown;
         public static double timeMultiply;
         public static double vanillaRatio;
@@ -170,13 +172,15 @@ public class ConfigReader{
                     AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><color:#00BFFF>RealisticSeasons <color:#E1FFFF>Hooked!");
                 }
             }
-            if (config.getBoolean("config.integrations.CustomCrops",false)){
-                if (Bukkit.getPluginManager().getPlugin("CustomCrops") == null) Log.warn("Failed to initialize CustomCrops!");
+            if (config.getBoolean("config.integrations.DraimFarming",false)){
+                if (Bukkit.getPluginManager().getPlugin("DraimFarming") == null) Log.warn("Failed to initialize DraimFarming!");
                 else {
                     season = new DraimFarmingSeason();
-                    AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><color:#00BFFF>CustomCrops <color:#E1FFFF>Hooked!");
+                    AdventureUtil.consoleMessage("<gradient:#a8ff78:#78ffd6>[DraimFishing] </gradient><color:#00BFFF>DraimFarming <color:#E1FFFF>Hooked!");
                 }
             }
+
+            isSpigot = Bukkit.getVersion().contains("Spigot");
 
             version = config.getString("config-version");
 
@@ -200,7 +204,7 @@ public class ConfigReader{
             priority = config.getString("config.event-priority");
             fishFinderCoolDown = config.getInt("config.fishfinder-cooldown");
             timeMultiply = config.getDouble("config.time-multiply");
-            lang = config.getString("config.lang","cn");
+            lang = config.getString("config.lang","en");
             competition = config.getBoolean("config.fishing-competition",true);
             disableJobXp = config.getBoolean("config.disable-JobsReborn-fishing-exp",false);
 
@@ -358,7 +362,7 @@ public class ConfigReader{
                     loot.setTime(time);
                     loot.setWeight(weight);
                     if (config.contains(key + ".nick")) loot.setNick(config.getString(key + ".nick"));
-                    else loot.setNick(config.getString(key + ".display.name", key));
+                    else loot.setNick(ChatColor.stripColor(config.getString(key + ".display.name", key)));
                     loot.setScore(config.getDouble(key + ".score",0));
                     loot.setShowInFinder(config.getBoolean(key + ".show-in-fishfinder", true));
                     loot.setRandomDurability(config.getBoolean(key + ".random-durability", false));

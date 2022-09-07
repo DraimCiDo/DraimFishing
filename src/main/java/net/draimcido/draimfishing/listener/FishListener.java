@@ -3,6 +3,9 @@ package net.draimcido.draimfishing.listener;
 import de.tr7zw.changeme.nbtapi.NBTCompound;
 import de.tr7zw.changeme.nbtapi.NBTItem;
 import net.draimcido.draimfishing.Main;
+import net.draimcido.draimfishing.utils.ItemUtil;
+import net.kyori.adventure.key.Key;
+import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.draimcido.draimfishing.competition.CompetitionSchedule;
@@ -722,8 +725,9 @@ public class FishListener implements Listener {
             }
         }
 
-        player.giveExp(vanillaLoot.getXp(), true);
-        player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1,1);
+        if (ConfigReader.Config.isSpigot) player.giveExp(vanillaLoot.getXp());
+        else player.giveExp(vanillaLoot.getXp(), true);
+        AdventureUtil.playerSound(player, Sound.Source.PLAYER, Key.key("minecraft:entity.experience_orb.pickup"));
         Entity item = location.getWorld().dropItem(location, itemStack);
         Vector vector = player.getLocation().subtract(location).toVector().multiply(0.1);
         vector = vector.setY((vector.getY()+0.2)*1.2);
@@ -797,14 +801,14 @@ public class FishListener implements Listener {
         if (text.contains("{loot}")){
             text = text.replace("{loot}","|");
             if (text.startsWith("|")){
-                subtitleComponent = itemStack.displayName().append(MiniMessage.miniMessage().deserialize(text.substring(1)));
+                subtitleComponent = ItemUtil.getDisplayName(itemStack).append(MiniMessage.miniMessage().deserialize(text.substring(1)));
             }
             else if (text.endsWith("|")){
-                subtitleComponent = MiniMessage.miniMessage().deserialize(text.substring(0,text.length()-1)).append(itemStack.displayName());
+                subtitleComponent = MiniMessage.miniMessage().deserialize(text.substring(0,text.length()-1)).append(ItemUtil.getDisplayName(itemStack));
             }
             else {
                 String[] titleSplit = StringUtils.split(text, "|");
-                subtitleComponent = MiniMessage.miniMessage().deserialize(titleSplit[0]).append(itemStack.displayName()).append(MiniMessage.miniMessage().deserialize(titleSplit[1]));
+                subtitleComponent = MiniMessage.miniMessage().deserialize(titleSplit[0]).append(ItemUtil.getDisplayName(itemStack)).append(MiniMessage.miniMessage().deserialize(titleSplit[1]));
             }
         }
         else {
