@@ -78,6 +78,8 @@ public class FishListener implements Listener {
 
     public void onFish(PlayerFishEvent event){
 
+        if (event.isCancelled()) return;
+
         PlayerFishEvent.State state = event.getState();
         Player player = event.getPlayer();
 

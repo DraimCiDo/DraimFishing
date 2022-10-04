@@ -1,7 +1,7 @@
 package net.draimcido.draimfishing;
 
 import net.kyori.adventure.bossbar.BossBar;
-import net.draimcido.draimfarming.helper.Log;
+import net.draimcido.draimfishing.helper.Log;
 import net.draimcido.draimfishing.competition.CompetitionConfig;
 import net.draimcido.draimfishing.competition.Goal;
 import net.draimcido.draimfishing.competition.bossbar.BossBarConfig;
